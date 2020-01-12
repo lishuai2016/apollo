@@ -18,6 +18,10 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ OpenAPI 在 v1/controller 中，实现了自己的 API ，共享调用 Portal 中的 Service
+ */
+
 @RestController("openapiAppController")
 @RequestMapping("/openapi/v1")
 public class AppController {

@@ -14,6 +14,12 @@ import com.ctrip.framework.foundation.spi.provider.ServerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 功能：
+ *  1、读取server.properties 文件用来保存比如：meta server信息等；apollo.meta=http://config-service-url
+ *  2、读取环境信息
+ *  3、读取数据中心信息
+ */
 public class DefaultServerProvider implements ServerProvider {
   private static final Logger logger = LoggerFactory.getLogger(DefaultServerProvider.class);
   private static final String SERVER_PROPERTIES_LINUX = "/opt/settings/server.properties";
@@ -46,7 +52,7 @@ public class DefaultServerProvider implements ServerProvider {
   @Override
   public void initialize(InputStream in) {
     try {
-      if (in != null) {
+      if (in != null) { //说明server.properties文件存在，直接加载信息
         try {
           m_serverProperties.load(new InputStreamReader(new BOMInputStream(in), StandardCharsets.UTF_8));
         } finally {

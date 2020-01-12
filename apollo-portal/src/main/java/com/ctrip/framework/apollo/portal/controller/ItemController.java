@@ -34,6 +34,11 @@ import java.util.Objects;
 
 import static com.ctrip.framework.apollo.common.utils.RequestPrecondition.checkModel;
 
+/**
+ 1、在【添加配置项】的界面中，点击【提交】按钮，调用创建 Item 的 API
+
+
+ */
 @RestController
 public class ItemController {
 
@@ -47,6 +52,14 @@ public class ItemController {
     this.permissionValidator = permissionValidator;
   }
 
+  /**
+   * 按照文本的格式，批量更新创建item
+   * @param appId
+   * @param env
+   * @param clusterName
+   * @param namespaceName
+   * @param model
+   */
   @PreAuthorize(value = "@permissionValidator.hasModifyNamespacePermission(#appId, #namespaceName, #env)")
   @PutMapping(value = "/apps/{appId}/envs/{env}/clusters/{clusterName}/namespaces/{namespaceName}/items", consumes = {
       "application/json"})
@@ -61,16 +74,27 @@ public class ItemController {
     configService.updateConfigItemByText(model);
   }
 
+  /**
+   * 创建单个配置项item接口
+   * @param appId
+   * @param env
+   * @param clusterName
+   * @param namespaceName
+   * @param item
+   * @return
+   */
   @PreAuthorize(value = "@permissionValidator.hasModifyNamespacePermission(#appId, #namespaceName, #env)")
   @PostMapping("/apps/{appId}/envs/{env}/clusters/{clusterName}/namespaces/{namespaceName}/item")
   public ItemDTO createItem(@PathVariable String appId, @PathVariable String env,
                             @PathVariable String clusterName, @PathVariable String namespaceName,
                             @RequestBody ItemDTO item) {
+    //校验对象以及对象的key是否为空
     checkModel(isValidItem(item));
 
     //protect
     item.setLineNum(0);
     item.setId(0);
+    // 设置 ItemDTO 的创建和修改人为当前管理员
     String userId = userInfoHolder.getUser().getUserId();
     item.setDataChangeCreatedBy(userId);
     item.setDataChangeLastModifiedBy(userId);

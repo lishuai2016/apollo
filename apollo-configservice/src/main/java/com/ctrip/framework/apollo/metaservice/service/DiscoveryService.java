@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * 这里根据服务的名字从注册中心获得服务的地址
+ */
 @Service
 public class DiscoveryService {
 

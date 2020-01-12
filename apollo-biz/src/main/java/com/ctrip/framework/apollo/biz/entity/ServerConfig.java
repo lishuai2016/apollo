@@ -11,6 +11,15 @@ import javax.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 可以基于数据库实现类配置表 ServerConfig ，实现业务系统里面的配置功能，短平快
+ * KV 结构，一个配置项，一条记录。例如
+ *
+提供给 Config Service、Admin Service 服务使用。
+在多机房部署时，往往希望 config service 和 admin service 只向同机房的 eureka 注册，要实现这个效果，需要利用 ServerConfig 表中的 cluster 字段。
+
+config service 和 admin service 会读取所在机器的 /opt/settings/server.properties（Mac/Linux）或 C:\opt\settings\server.properties（Windows）中的 idc 属性，如果该 idc 有对应的eureka.service.url 配置，那么就会向该机房的 eureka 注册 。
+
+默认情况下，使用 "default" 集群。
  */
 @Entity
 @Table(name = "ServerConfig")

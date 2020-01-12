@@ -21,8 +21,9 @@ import org.springframework.stereotype.Component;
 
 
 /**
+ * 加锁
  * 一个namespace在一次发布中只能允许一个人修改配置
- * 通过数据库lock表来实现
+ * 通过数据库lock表来实现【通过唯一索引实现】
  */
 @Aspect
 @Component
@@ -79,13 +80,14 @@ public class NamespaceAcquireLockAspect {
 
   void acquireLock(String appId, String clusterName, String namespaceName,
                            String currentUser) {
-    if (bizConfig.isNamespaceLockSwitchOff()) {
+    // 当关闭锁定 Namespace 开关时，直接返回
+    if (bizConfig.isNamespaceLockSwitchOff()) {//配置是否开启锁
       return;
     }
 
-    Namespace namespace = namespaceService.findOne(appId, clusterName, namespaceName);
+    Namespace namespace = namespaceService.findOne(appId, clusterName, namespaceName);//获得一个namespace实例
 
-    acquireLock(namespace, currentUser);
+    acquireLock(namespace, currentUser);//获取锁
   }
 
   void acquireLock(long namespaceId, String currentUser) {
@@ -99,6 +101,15 @@ public class NamespaceAcquireLockAspect {
 
   }
 
+  /**
+   * 根据namespace和当前用户获得锁
+   *
+   * 发生 DataIntegrityViolationException 异常，说明保存 NamespaceLock 对象失败，由于唯一索引 namespaceId 冲突，
+   * 调用 NamespaceLockService#tryLock(NamespaceLock) 方法，获得最新的 NamespaceLock 对象。
+   *
+   * @param namespace
+   * @param currentUser
+   */
   private void acquireLock(Namespace namespace, String currentUser) {
     if (namespace == null) {
       throw new BadRequestException("namespace not exist.");
@@ -106,25 +117,34 @@ public class NamespaceAcquireLockAspect {
 
     long namespaceId = namespace.getId();
 
+    //这里使用的是数据库锁，去数据库获得锁
     NamespaceLock namespaceLock = namespaceLockService.findLock(namespaceId);
+    //如果为null说明没有人使用这个锁，自己可以使用
     if (namespaceLock == null) {
       try {
         tryLock(namespaceId, currentUser);
         //lock success
       } catch (DataIntegrityViolationException e) {
         //lock fail
+        // 锁定失败，获得 NamespaceLock 对象
         namespaceLock = namespaceLockService.findLock(namespaceId);
+        // 校验锁定人是否是当前管理员
         checkLock(namespace, namespaceLock, currentUser);
       } catch (Exception e) {
         logger.error("try lock error", e);
         throw e;
       }
     } else {
-      //check lock owner is current user
+      //check lock owner is current user 检查是不是自己拿到的锁，锁的可重入性
       checkLock(namespace, namespaceLock, currentUser);
     }
   }
 
+  /**
+   * 通过向数据库插入一条记录来实现加锁，然后通过锁的创建者是不是自己，实现可重入性
+   * @param namespaceId
+   * @param user
+   */
   private void tryLock(long namespaceId, String user) {
     NamespaceLock lock = new NamespaceLock();
     lock.setNamespaceId(namespaceId);
@@ -133,13 +153,21 @@ public class NamespaceAcquireLockAspect {
     namespaceLockService.tryLock(lock);
   }
 
+  /**
+   * 查看锁的创建者是不是自己来判断
+   * @param namespace
+   * @param namespaceLock
+   * @param currentUser
+   */
   private void checkLock(Namespace namespace, NamespaceLock namespaceLock,
                          String currentUser) {
+    // 当 NamespaceLock 不存在，抛出 ServiceException 异常
     if (namespaceLock == null) {
       throw new ServiceException(
           String.format("Check lock for %s failed, please retry.", namespace.getNamespaceName()));
     }
 
+    // 校验锁定人是否是当前管理员。若不是，抛出 BadRequestException 异常
     String lockOwner = namespaceLock.getDataChangeCreatedBy();
     if (!lockOwner.equals(currentUser)) {
       throw new BadRequestException(

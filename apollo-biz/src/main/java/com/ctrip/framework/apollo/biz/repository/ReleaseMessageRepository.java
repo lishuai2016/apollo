@@ -11,6 +11,7 @@ import java.util.List;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 提供 ReleaseMessage 的数据访问 给 Admin Service 和 Config Service
  */
 public interface ReleaseMessageRepository extends PagingAndSortingRepository<ReleaseMessage, Long> {
   List<ReleaseMessage> findFirst500ByIdGreaterThanOrderByIdAsc(Long id);

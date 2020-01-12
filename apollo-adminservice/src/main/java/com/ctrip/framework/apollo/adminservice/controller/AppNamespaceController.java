@@ -34,6 +34,12 @@ public class AppNamespaceController {
     this.namespaceService = namespaceService;
   }
 
+  /**
+   * 创建namespace对象
+   * @param appNamespace
+   * @param silentCreation
+   * @return
+   */
   @PostMapping("/apps/{appId}/appnamespaces")
   public AppNamespaceDTO create(@RequestBody AppNamespaceDTO appNamespace,
                                 @RequestParam(defaultValue = "false") boolean silentCreation) {
@@ -43,11 +49,12 @@ public class AppNamespaceController {
 
     if (managedEntity == null) {
       if (StringUtils.isEmpty(entity.getFormat())){
-        entity.setFormat(ConfigFileFormat.Properties.getValue());
+        entity.setFormat(ConfigFileFormat.Properties.getValue());//设置默认的文件格式
       }
-
+      //不存在，然后保存在数据库
       entity = appNamespaceService.createAppNamespace(entity);
     } else if (silentCreation) {
+      //含义？？？
       appNamespaceService.createNamespaceForAppNamespaceInAllCluster(appNamespace.getAppId(), appNamespace.getName(),
           appNamespace.getDataChangeCreatedBy());
 

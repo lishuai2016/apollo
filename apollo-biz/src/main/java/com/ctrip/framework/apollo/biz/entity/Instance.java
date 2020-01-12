@@ -14,6 +14,11 @@ import javax.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * 在 Portal 的应用详情页，我们可以看到每个 Namespace 下的实例列表
+ * 实例( Instance )，实际就是 Apollo 的客户端
+ *
+ * appId + clusterName + dataCenter + ip 组成唯一索引，通过这四个字段唯一一个实例( 客户端 )
  */
 @Entity
 @Table(name = "Instance")

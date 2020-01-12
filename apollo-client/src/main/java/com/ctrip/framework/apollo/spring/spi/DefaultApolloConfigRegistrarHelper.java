@@ -16,6 +16,9 @@ import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.type.AnnotationMetadata;
 
+/**
+ * 在这里解析注解指定的各个配置文件的名称
+ */
 public class DefaultApolloConfigRegistrarHelper implements ApolloConfigRegistrarHelper {
 
   @Override
@@ -24,7 +27,7 @@ public class DefaultApolloConfigRegistrarHelper implements ApolloConfigRegistrar
         .fromMap(importingClassMetadata.getAnnotationAttributes(EnableApolloConfig.class.getName()));
     String[] namespaces = attributes.getStringArray("value");
     int order = attributes.getNumber("order");
-    PropertySourcesProcessor.addNamespaces(Lists.newArrayList(namespaces), order);
+    PropertySourcesProcessor.addNamespaces(Lists.newArrayList(namespaces), order);//设置配置文件
 
     Map<String, Object> propertySourcesPlaceholderPropertyValues = new HashMap<>();
     // to make sure the default PropertySourcesPlaceholderConfigurer's priority is higher than PropertyPlaceholderConfigurer

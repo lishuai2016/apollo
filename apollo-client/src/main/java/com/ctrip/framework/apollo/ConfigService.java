@@ -10,15 +10,24 @@ import com.ctrip.framework.apollo.spi.ConfigRegistry;
 /**
  * Entry point for client config use
  *
+ * 客户端配置服务，作为配置使用的入口
+
+ 在 Apollo 客户端中，有两种形式的配置对象的接口：
+
+ 1、Config ，配置接口
+ 2、ConfigFile ，配置文件接口
+
+ 实际情况下，我们使用 Config 居多。另外，有一点需要注意，Config 和 ConfigFile 差异在于形式，而不是类型
+ *
  * @author Jason Song(song_s@ctrip.com)
  */
 public class ConfigService {
-  private static final ConfigService s_instance = new ConfigService();
+  private static final ConfigService s_instance = new ConfigService();//单例
 
-  private volatile ConfigManager m_configManager;
+  private volatile ConfigManager m_configManager;//ConfigManager 是 Config 和ConfigFile 的管理器，最后调用的还是ConfigRegistry
   private volatile ConfigRegistry m_configRegistry;
 
-  private ConfigManager getManager() {
+  private ConfigManager getManager() {//单例
     if (m_configManager == null) {
       synchronized (this) {
         if (m_configManager == null) {
@@ -30,7 +39,7 @@ public class ConfigService {
     return m_configManager;
   }
 
-  private ConfigRegistry getRegistry() {
+  private ConfigRegistry getRegistry() {//单例
     if (m_configRegistry == null) {
       synchronized (this) {
         if (m_configRegistry == null) {
@@ -74,6 +83,11 @@ public class ConfigService {
    *
    * @param namespace the namespace
    * @param config    the config instance
+  按道理说，应该是将 Config 对象，设置到 ConfigManager 才对呀！这是笔者一开始的理解。
+  在 Apollo 的设计中，ConfigManager 不允许设置 Namespace 对应的 Config 对象，
+  而是通过 ConfigFactory 统一创建，虽然此时的创建是假的，直接返回了 config 方法参数。
+
+   在这里注册一个配置工厂
    */
   static void setConfig(String namespace, final Config config) {
     s_instance.getRegistry().register(namespace, new ConfigFactory() {

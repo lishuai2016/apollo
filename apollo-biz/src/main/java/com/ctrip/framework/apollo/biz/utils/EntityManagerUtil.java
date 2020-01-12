@@ -18,14 +18,18 @@ public class EntityManagerUtil extends EntityManagerFactoryAccessor {
    * close the entity manager.
    * Use it with caution! This is only intended for use with async request, which Spring won't
    * close the entity manager until the async request is finished.
+   *
+   * 只是用在spring的异步请求中
    */
   public void closeEntityManager() {
+    // 获得 EntityManagerHolder 对象
     EntityManagerHolder emHolder = (EntityManagerHolder)
         TransactionSynchronizationManager.getResource(getEntityManagerFactory());
     if (emHolder == null) {
       return;
     }
     logger.debug("Closing JPA EntityManager in EntityManagerUtil");
+    // 关闭 EntityManager
     EntityManagerFactoryUtils.closeEntityManager(emHolder.getEntityManager());
   }
 }

@@ -11,6 +11,8 @@ import javax.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * 权限模型，类似于userrole的功能
  */
 @Entity
 @Table(name = "ConsumerRole")

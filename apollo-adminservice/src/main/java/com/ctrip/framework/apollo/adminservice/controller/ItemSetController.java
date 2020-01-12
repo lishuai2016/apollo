@@ -10,6 +10,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 对namespace的item操作都需要这个NamespaceLock锁
+ *
+ * 批量更新items接口
+ */
+
 @RestController
 public class ItemSetController {
 

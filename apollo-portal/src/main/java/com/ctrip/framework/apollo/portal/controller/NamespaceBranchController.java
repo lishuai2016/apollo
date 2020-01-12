@@ -24,6 +24,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ 创建灰度，调用的是创建 Namespace 分支 的 API 。通过创建的子 Namespace ，可以关联其自己定义的 Cluster、Item、Release 等等
+
+ 1、创建 Namespace 分支时：
+ 1.1、会创建子 Cluster ，指向父 Cluster 。
+ 1.2、会创建子 Namespace ，关联子 Namespace 。实际上，子 Namespace 和 父 Namespace 无任何数据字段上的关联。
+
+ 2、向子 Namespace 添加 Item 时，该 Item 指向子 Namespace 。虽然，代码实现和父 Namespace 是一模一样的。
+
+ 3、子 Namespace 发布( 灰度发布 ) 和 父 Namespace 发布( 普通发布 ) 在代码实现
+
+ 可以把分支和灰度等价
+ */
+
 @RestController
 public class NamespaceBranchController {
 
@@ -133,7 +147,15 @@ public class NamespaceBranchController {
     return namespaceBranchService.findBranchGrayRules(appId, Env.valueOf(env), clusterName, namespaceName, branchName);
   }
 
-
+  /**
+   * 灰度发布规则
+   * @param appId
+   * @param env
+   * @param clusterName
+   * @param namespaceName
+   * @param branchName
+   * @param rules
+   */
   @PreAuthorize(value = "@permissionValidator.hasOperateNamespacePermission(#appId, #namespaceName, #env)")
   @PutMapping(value = "/apps/{appId}/envs/{env}/clusters/{clusterName}/namespaces/{namespaceName}/branches/{branchName}/rules")
   public void updateBranchRules(@PathVariable String appId, @PathVariable String env,

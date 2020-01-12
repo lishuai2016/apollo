@@ -108,12 +108,17 @@ public class AppService {
     appAPI.createApp(env, appDTO);
   }
 
+  /**
+   * 保存到本地portal数据库
+   * @param app
+   * @return
+   */
   @Transactional
   public App createAppInLocal(App app) {
-    String appId = app.getAppId();
+    String appId = app.getAppId();//应用id唯一标识一个应用
     App managedApp = appRepository.findByAppId(appId);
 
-    if (managedApp != null) {
+    if (managedApp != null) {//判断应用是否已经存在
       throw new BadRequestException(String.format("App already exists. AppId = %s", appId));
     }
 
@@ -127,12 +132,12 @@ public class AppService {
     app.setDataChangeCreatedBy(operator);
     app.setDataChangeLastModifiedBy(operator);
 
-    App createdApp = appRepository.save(app);
+    App createdApp = appRepository.save(app);//保存APP
 
-    appNamespaceService.createDefaultAppNamespace(appId);
-    roleInitializationService.initAppRoles(createdApp);
+    appNamespaceService.createDefaultAppNamespace(appId);//关联保存一个appnamespace对象默认的namespace对象
+    roleInitializationService.initAppRoles(createdApp);//生成角色权限相关之间的映射
 
-    Tracer.logEvent(TracerEventType.CREATE_APP, appId);
+    Tracer.logEvent(TracerEventType.CREATE_APP, appId);//功能？？？
 
     return createdApp;
   }

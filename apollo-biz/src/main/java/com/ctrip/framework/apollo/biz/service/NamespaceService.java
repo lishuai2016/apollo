@@ -33,6 +33,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ 提供 Namespace 的 Service 逻辑给 Admin Service 和 Config Service
+ */
 @Service
 public class NamespaceService {
 
@@ -192,17 +195,25 @@ public class NamespaceService {
   }
 
   public Namespace findChildNamespace(String appId, String parentClusterName, String namespaceName) {
+    //根据appid+namespaceName从namespaceName表获得数据
+    // 获得 Namespace 数组
     List<Namespace> namespaces = findByAppIdAndNamespaceName(appId, namespaceName);
+    //只有一个文件对应多个集群才会出现结果集大于1
+    // 若只有一个 Namespace ，说明没有子 Namespace
     if (CollectionUtils.isEmpty(namespaces) || namespaces.size() == 1) {
       return null;
     }
 
+    //获得当前集群的子集群
+    // 获得 Cluster 数组
     List<Cluster> childClusters = clusterService.findChildClusters(appId, parentClusterName);
+    // 若无子 Cluster ，说明没有子 Namespace
     if (CollectionUtils.isEmpty(childClusters)) {
       return null;
     }
-
+// 创建子 Cluster 的名字的集合
     Set<String> childClusterNames = childClusters.stream().map(Cluster::getName).collect(Collectors.toSet());
+    // 遍历 Namespace 数组，比较 Cluster 的名字。若符合，则返回该子 Namespace 对象。
     //the child namespace is the intersection of the child clusters and child namespaces
     for (Namespace namespace : namespaces) {
       if (childClusterNames.contains(namespace.getClusterName())) {
@@ -226,14 +237,22 @@ public class NamespaceService {
     return findParentNamespace(new Namespace(appId, clusterName, namespaceName));
   }
 
+  /**
+   * 查找当前namespace是否有父namespace，没有的话返回null
+   * 若有父 Namespace 对象，说明是子 Namespace ( 灰度发布 )，则使用父 Namespace 的 Cluster 名字。
+   * 因为，客户端即使在灰度发布的情况下，也是使用 父 Namespace 的 Cluster 名字。
+   * 也就说，灰度发布，对客户端是透明无感知的
+   * @param namespace
+   * @return
+   */
   public Namespace findParentNamespace(Namespace namespace) {
-    String appId = namespace.getAppId();
-    String namespaceName = namespace.getNamespaceName();
+    String appId = namespace.getAppId();//应用id
+    String namespaceName = namespace.getNamespaceName();//应用的名称
 
-    Cluster cluster = clusterService.findOne(appId, namespace.getClusterName());
-    if (cluster != null && cluster.getParentClusterId() > 0) {
+    Cluster cluster = clusterService.findOne(appId, namespace.getClusterName());//根据appid+集群的名称查找集群的信息
+    if (cluster != null && cluster.getParentClusterId() > 0) {//集群包含父集群
       Cluster parentCluster = clusterService.findOne(cluster.getParentClusterId());
-      return findOne(appId, parentCluster.getName(), namespaceName);
+      return findOne(appId, parentCluster.getName(), namespaceName);//根据appid+集群名+namespace从namespace表获得一条记录
     }
 
     return null;
@@ -267,22 +286,29 @@ public class NamespaceService {
     }
   }
 
+  /**
+   * 删除一个namespace对象
+   *
+   * @param namespace
+   * @param operator
+   * @return
+   */
   @Transactional
   public Namespace deleteNamespace(Namespace namespace, String operator) {
     String appId = namespace.getAppId();
     String clusterName = namespace.getClusterName();
     String namespaceName = namespace.getNamespaceName();
 
-    itemService.batchDelete(namespace.getId(), operator);
-    commitService.batchDelete(appId, clusterName, namespace.getNamespaceName(), operator);
+    itemService.batchDelete(namespace.getId(), operator);//根据appid删除配置项
+    commitService.batchDelete(appId, clusterName, namespace.getNamespaceName(), operator);//appid+clusterName+NamespaceName删除提交记录
 
     // Child namespace releases should retain as long as the parent namespace exists, because parent namespaces' release
-    // histories need them
-    if (!isChildNamespace(namespace)) {
+    // histories need them   自己是不是别人的孩子
+    if (!isChildNamespace(namespace)) {  //如果是灰度发布，暂时不删除，不是灰度直接删除发布信息
       releaseService.batchDelete(appId, clusterName, namespace.getNamespaceName(), operator);
     }
 
-    //delete child namespace
+    //delete child namespace  看自己是不是有孩子
     Namespace childNamespace = findChildNamespace(namespace);
     if (childNamespace != null) {
       namespaceBranchService.deleteBranch(appId, clusterName, namespaceName,
@@ -291,7 +317,7 @@ public class NamespaceService {
       releaseService.batchDelete(appId, childNamespace.getClusterName(), namespaceName, operator);
     }
 
-    releaseHistoryService.batchDelete(appId, clusterName, namespaceName, operator);
+    releaseHistoryService.batchDelete(appId, clusterName, namespaceName, operator);//删除发布历史
 
     instanceService.batchDeleteInstanceConfig(appId, clusterName, namespaceName);
 
@@ -311,11 +337,17 @@ public class NamespaceService {
     return deleted;
   }
 
+  /**
+   * 保存namespace到数据库
+   * @param entity
+   * @return
+   */
   @Transactional
   public Namespace save(Namespace entity) {
     if (!isNamespaceUnique(entity.getAppId(), entity.getClusterName(), entity.getNamespaceName())) {
       throw new ServiceException("namespace not unique");
     }
+    // 保护代码，避免 Namespace 对象中，已经有 id 属性。
     entity.setId(0);//protection
     Namespace namespace = namespaceRepository.save(entity);
 
@@ -338,6 +370,16 @@ public class NamespaceService {
     return managedNamespace;
   }
 
+  /**
+   * 创建并保存 App 下指定 Cluster 的 Namespace 到数据库
+   1、在 App 创建时，传入 Cluster 为 default ，此时只有 1 个 AppNamespace 对象。
+   2、在 Cluster 创建时，传入自己，此处可以有多个 AppNamespace 对象。
+   *
+   * 简单来说就是把该appid下的所有文件关联到指定的集群clusterName上
+   * @param appId
+   * @param clusterName
+   * @param createBy
+   */
   @Transactional
   public void instanceOfAppNamespaces(String appId, String clusterName, String createBy) {
 

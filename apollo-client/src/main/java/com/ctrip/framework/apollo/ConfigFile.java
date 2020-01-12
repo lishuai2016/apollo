@@ -5,6 +5,10 @@ import com.ctrip.framework.apollo.enums.ConfigSourceType;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+从实现上，ConfigFile 和 Config 超级类似，所以本文会写的比较简洁。
+
+1、Config 基于 KV 数据结构。
+2、ConfigFile 基于 String 数据结构。
  */
 public interface ConfigFile {
   /**

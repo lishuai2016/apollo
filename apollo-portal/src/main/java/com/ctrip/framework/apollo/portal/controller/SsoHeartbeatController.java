@@ -13,6 +13,13 @@ import javax.servlet.http.HttpServletResponse;
  * information refreshed when unavailable
  *
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * 通过打开一个新的窗口，访问 http://ip:prot/sso_hearbeat 地址，每 60 秒刷新一次页面，
+ * 从而避免 SSO 登陆过期。因此，相关类的类名都包含 Heartbeat ，代表心跳的意思
+ *
+ * 前端页面只有一个定时刷新的任务，如何制定请求的是这个？
+ *
+ * 是通过footer.html中的？
  */
 @Controller
 @RequestMapping("/sso_heartbeat")

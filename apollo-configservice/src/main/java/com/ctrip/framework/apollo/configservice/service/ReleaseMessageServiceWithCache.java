@@ -28,6 +28,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+实现 InitializingBean 和 ReleaseMessageListener 接口，缓存 ReleaseMessage 的 Service 实现类。
+通过将 ReleaseMessage 缓存在内存中，提高查询性能。缓存实现方式如下：
+
+1、启动时，初始化 ReleaseMessage 到缓存。
+
+2、新增时，基于 ReleaseMessageListener ，通知有新的 ReleaseMessage ，根据是否有消息间隙，直接使用该 ReleaseMessage 或从数据库读取。
  */
 @Service
 public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, InitializingBean {
@@ -36,14 +42,14 @@ public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, I
   private final ReleaseMessageRepository releaseMessageRepository;
   private final BizConfig bizConfig;
 
-  private int scanInterval;
-  private TimeUnit scanIntervalTimeUnit;
+  private int scanInterval;//扫描周期
+  private TimeUnit scanIntervalTimeUnit;//扫描周期单位
 
-  private volatile long maxIdScanned;
+  private volatile long maxIdScanned;//最后扫描到的 ReleaseMessage 的编号，因为是表的主键id，正常情况下是递增的
 
-  private ConcurrentMap<String, ReleaseMessage> releaseMessageCache;
+  private ConcurrentMap<String, ReleaseMessage> releaseMessageCache;//发布消息缓存  key :SampleApp+default+application其实也是消息的一部分
 
-  private AtomicBoolean doScan;
+  private AtomicBoolean doScan;//是否执行扫描任务
   private ExecutorService executorService;
 
   public ReleaseMessageServiceWithCache(
@@ -51,12 +57,13 @@ public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, I
       final BizConfig bizConfig) {
     this.releaseMessageRepository = releaseMessageRepository;
     this.bizConfig = bizConfig;
-    initialize();
+    initialize();//构造函数中调用初始化
   }
 
   private void initialize() {
-    releaseMessageCache = Maps.newConcurrentMap();
-    doScan = new AtomicBoolean(true);
+    releaseMessageCache = Maps.newConcurrentMap();// 创建缓存对象
+    doScan = new AtomicBoolean(true);// 设置 doScan 为 true
+    // 创建 ScheduledExecutorService 对象，大小为 1 。
     executorService = Executors.newSingleThreadExecutor(ApolloThreadFactory
         .create("ReleaseMessageServiceWithCache", true));
   }
@@ -98,36 +105,62 @@ public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, I
   @Override
   public void handleMessage(ReleaseMessage message, String channel) {
     //Could stop once the ReleaseMessageScanner starts to work
-    doScan.set(false);
+    // 关闭增量拉取定时任务的执行
+    doScan.set(false);//关闭定时更新
     logger.info("message received - channel: {}, message: {}", channel, message);
 
     String content = message.getMessage();
     Tracer.logEvent("Apollo.ReleaseMessageService.UpdateCache", String.valueOf(message.getId()));
-    if (!Topics.APOLLO_RELEASE_TOPIC.equals(channel) || Strings.isNullOrEmpty(content)) {
+    if (!Topics.APOLLO_RELEASE_TOPIC.equals(channel) || Strings.isNullOrEmpty(content)) {//只监听发布的消息，且是有效的消息
       return;
     }
 
+    // 计算 gap
     long gap = message.getId() - maxIdScanned;
+    // 若无空缺 gap ，直接合并
     if (gap == 1) {
       mergeReleaseMessage(message);
+      // 如有空缺 gap ，增量拉取
     } else if (gap > 1) {
       //gap found!
       loadReleaseMessages(maxIdScanned);
     }
   }
 
+  /**
+   * 通知 Spring 调用，初始化定时任务
+   * @throws Exception
+   */
   @Override
   public void afterPropertiesSet() throws Exception {
+    // 从 ServerConfig 中，读取任务的周期配置
     populateDataBaseInterval();
     //block the startup process until load finished
     //this should happen before ReleaseMessageScanner due to autowire
+    // 初始拉取 ReleaseMessage 到缓存
     loadReleaseMessages(0);
 
+    // 创建定时任务，增量拉取 ReleaseMessage 到缓存，用以处理初始化期间，产生的 ReleaseMessage 遗漏的问题
+    /**
+     1、 20:00:00 程序启动过程中，当前 release message 有 5 条
+     2、20:00:01 loadReleaseMessages(0); 执行完成，获取到 5 条记录
+     3、20:00:02 有一条 release message 新产生，但是因为程序还没启动完，所以不会触发 handle message 操作
+     4、20:00:05 程序启动完成，但是第三步的这条新的 release message 漏了
+     5、20:10:00 假设这时又有一条 release message 产生，这次会触发 handle message ，同时会把第三步的那条 release message 加载到
+     所以，定期刷的机制就是为了解决第三步中产生的release message问题。
+     当程序启动完，handleMessage生效后，就不需要再定期扫了
+
+     ReleaseMessageServiceWithCache 初始化在 ReleaseMessageScanner 之前，因此在第 3 步时，
+     ReleaseMessageServiceWithCache 初始化完成之后，ReleaseMessageScanner 初始化之前，
+     产生了一条心的 ReleaseMessage ，会导致 ReleaseMessageScanner.maxIdScanned 大于
+     ReleaseMessageServiceWithCache.maxIdScanned ，从而导致 ReleaseMessage 的遗漏。
+     */
     executorService.submit(() -> {
       while (doScan.get() && !Thread.currentThread().isInterrupted()) {
         Transaction transaction = Tracer.newTransaction("Apollo.ReleaseMessageServiceWithCache",
             "scanNewReleaseMessages");
         try {
+          // 增量拉取 ReleaseMessage 到缓存
           loadReleaseMessages(maxIdScanned);
           transaction.setStatus(Transaction.SUCCESS);
         } catch (Throwable ex) {
@@ -145,6 +178,10 @@ public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, I
     });
   }
 
+  /**
+   * 这里的id相当于版本号，在缓存中没有直接放入，有的话并且比当前版本旧的也放入缓存
+   * @param releaseMessage
+   */
   private synchronized void mergeReleaseMessage(ReleaseMessage releaseMessage) {
     ReleaseMessage old = releaseMessageCache.get(releaseMessage.getMessage());
     if (old == null || releaseMessage.getId() > old.getId()) {
@@ -153,18 +190,23 @@ public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, I
     }
   }
 
+  //拉取消息到缓存
   private void loadReleaseMessages(long startId) {
     boolean hasMore = true;
     while (hasMore && !Thread.currentThread().isInterrupted()) {
       //current batch is 500
+      // 获得大于 maxIdScanned 的 500 条 ReleaseMessage 记录，按照 id 升序
       List<ReleaseMessage> releaseMessages = releaseMessageRepository
           .findFirst500ByIdGreaterThanOrderByIdAsc(startId);
       if (CollectionUtils.isEmpty(releaseMessages)) {
         break;
       }
+      // 合并到 ReleaseMessage 缓存
       releaseMessages.forEach(this::mergeReleaseMessage);
       int scanned = releaseMessages.size();
+      // 获得新的 maxIdScanned ，取最后一条记录
       startId = releaseMessages.get(scanned - 1).getId();
+      // 若拉取不足 500 条，说明无新消息了
       hasMore = scanned == 500;
       logger.info("Loaded {} release messages with startId {}", scanned, startId);
     }

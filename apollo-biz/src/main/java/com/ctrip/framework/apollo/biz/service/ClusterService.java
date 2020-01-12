@@ -94,12 +94,12 @@ public class ClusterService {
       throw new BadRequestException("cluster not exist");
     }
 
-    //delete linked namespaces
+    //delete linked namespaces  关联删除namespace【通过关联删除配置项等】
     namespaceService.deleteByAppIdAndClusterName(cluster.getAppId(), cluster.getName(), operator);
 
     cluster.setDeleted(true);
     cluster.setDataChangeLastModifiedBy(operator);
-    clusterRepository.save(cluster);
+    clusterRepository.save(cluster);//标记删除
 
     auditService.audit(Cluster.class.getSimpleName(), id, Audit.OP.DELETE, operator);
   }
@@ -133,12 +133,12 @@ public class ClusterService {
   }
 
   public List<Cluster> findChildClusters(String appId, String parentClusterName) {
-    Cluster parentCluster = findOne(appId, parentClusterName);
+    Cluster parentCluster = findOne(appId, parentClusterName);//根据appid+name从cluster表获取数据
     if (parentCluster == null) {
       throw new BadRequestException("parent cluster not exist");
     }
 
-    return clusterRepository.findByParentClusterId(parentCluster.getId());
+    return clusterRepository.findByParentClusterId(parentCluster.getId());//查询当前集群是否有子集群
   }
 
   public List<Cluster> findClusters(String appId) {

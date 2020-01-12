@@ -12,12 +12,14 @@ public class PropertiesUtil {
    * Transform the properties to string format
    * @param properties the properties object
    * @return the string containing the properties
+   * 将 Properties 拼接成字符串
    * @throws IOException
    */
   public static String toString(Properties properties) throws IOException {
     StringWriter writer = new StringWriter();
     properties.store(writer, null);
     StringBuffer stringBuffer = writer.getBuffer();
+    // 去除头部自动添加的注释
     filterPropertiesComment(stringBuffer);
     return stringBuffer.toString();
   }

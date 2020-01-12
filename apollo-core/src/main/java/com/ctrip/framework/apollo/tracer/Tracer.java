@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 整合监控cat的监控服务，这里是埋点统计信息
  */
 public abstract class Tracer {
   private static final Logger logger = LoggerFactory.getLogger(Tracer.class);

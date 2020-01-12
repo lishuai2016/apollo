@@ -81,6 +81,7 @@ public class NamespaceService {
       namespace.setDataChangeCreatedBy(userInfoHolder.getUser().getUserId());
     }
     namespace.setDataChangeLastModifiedBy(userInfoHolder.getUser().getUserId());
+    // 创建 Namespace 到 Admin Service
     NamespaceDTO createdNamespace = namespaceAPI.createNamespace(env, namespace);
 
     Tracer.logEvent(TracerEventType.CREATE_NAMESPACE,

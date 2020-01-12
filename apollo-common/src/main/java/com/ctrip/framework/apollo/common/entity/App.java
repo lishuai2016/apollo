@@ -10,6 +10,19 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 
+/**
+ 1、ORM 选用 Hibernate 框架。
+ 2、@SQLDelete(...) + @Where(...) 注解，配合 BaseEntity.extends 字段，实现 App 的逻辑删除
+
+ 我们看到 App 创建时，在 Portal Service 存储完成后，会异步同步到 Admin Service 中，这是为什么呢？
+
+ 在 Apollo 的架构中，一个环境( Env ) 对应一套 Admin Service 和 Config Service 。
+ 而 Portal Service 会管理所有环境( Env ) 。因此，每次创建 App 后，需要进行同步。
+
+ 或者说，App 在 Portal Service 中，表示需要管理的 App 。而在 Admin Service 和 Config Service 中，表示存在的 App
+
+ */
+
 @Entity
 @Table(name = "App")
 @SQLDelete(sql = "Update App set isDeleted = 1 where id = ?")

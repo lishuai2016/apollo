@@ -15,7 +15,7 @@ import com.google.common.collect.Lists;
  */
 public abstract class AbstractConfigRepository implements ConfigRepository {
   private static final Logger logger = LoggerFactory.getLogger(AbstractConfigRepository.class);
-  private List<RepositoryChangeListener> m_listeners = Lists.newCopyOnWriteArrayList();
+  private List<RepositoryChangeListener> m_listeners = Lists.newCopyOnWriteArrayList();//监听器列表
 
   protected boolean trySync() {
     try {
@@ -29,7 +29,7 @@ public abstract class AbstractConfigRepository implements ConfigRepository {
     }
     return false;
   }
-
+  //数据同步方法
   protected abstract void sync();
 
   @Override

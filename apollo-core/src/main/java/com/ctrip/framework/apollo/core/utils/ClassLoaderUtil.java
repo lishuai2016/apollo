@@ -46,6 +46,7 @@ public class ClassLoaderUtil {
   }
 
 
+  //  /WEB-INF/classes/   获得根路径
   public static String getClassPath() {
     return classPath;
   }

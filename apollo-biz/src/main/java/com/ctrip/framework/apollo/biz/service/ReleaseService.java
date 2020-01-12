@@ -168,32 +168,41 @@ public class ReleaseService {
   public Release publish(Namespace namespace, String releaseName, String releaseComment,
                          String operator, boolean isEmergencyPublish) {
 
+    //非紧急发布继续检查，紧急发布跳过
     checkLock(namespace, isEmergencyPublish, operator);
 
+    //获取这个配置文件对应的配置项
     Map<String, String> operateNamespaceItems = getNamespaceItems(namespace);
 
+    //查找父namespace【集群cluster采用父子关系，通过集群来映射的？】，没有的话为null
     Namespace parentNamespace = namespaceService.findParentNamespace(namespace);
 
+    // 若有父 Namespace ，则是子 Namespace ，进行灰度发布
     //branch release
     if (parentNamespace != null) {
       return publishBranchNamespace(parentNamespace, namespace, operateNamespaceItems,
                                     releaseName, releaseComment, operator, isEmergencyPublish);
     }
 
+    // 获得子 Namespace 对象
     Namespace childNamespace = namespaceService.findChildNamespace(namespace);
 
+    // 获得上一次，并且有效的 Release 对象
     Release previousRelease = null;
     if (childNamespace != null) {
       previousRelease = findLatestActiveRelease(namespace);
     }
 
+    // 创建操作 Contex
     //master release
     Map<String, Object> operationContext = Maps.newHashMap();
     operationContext.put(ReleaseOperationContext.IS_EMERGENCY_PUBLISH, isEmergencyPublish);
 
+    // 主干发布
     Release release = masterRelease(namespace, releaseName, releaseComment, operateNamespaceItems,
                                     operator, ReleaseOperation.NORMAL_RELEASE, operationContext);
 
+    // 若有子 Namespace 时，自动将主干合并到子 Namespace ，并进行一次子 Namespace 的发布
     //merge to branch and auto release
     if (childNamespace != null) {
       mergeFromMasterAndPublishBranch(namespace, childNamespace, operateNamespaceItems,
@@ -204,16 +213,35 @@ public class ReleaseService {
     return release;
   }
 
+  /**
+   *灰度发布，实际上是子 Namespace ( 分支 Namespace )发布 Release
+   * 差异点，在于 apollo-biz 项目中，ReleaseService#publish(...) 方法中，多了一个处理灰度发布的分支逻辑
+   *#publishBranchNamespace(...) 方法，子 Namespace 发布 Release 。子 Namespace 会自动继承 父 Namespace 已经发布的配置。
+   * 若有相同的配置项，使用 子 Namespace 的。配置处理的逻辑上，和关联 Namespace 是一致的。
+   *
+   * @param parentNamespace
+   * @param childNamespace
+   * @param childNamespaceItems
+   * @param releaseName
+   * @param releaseComment
+   * @param operator
+   * @param isEmergencyPublish
+   * @param grayDelKeys
+   * @return
+   */
   private Release publishBranchNamespace(Namespace parentNamespace, Namespace childNamespace,
                                          Map<String, String> childNamespaceItems,
                                          String releaseName, String releaseComment,
                                          String operator, boolean isEmergencyPublish, Set<String> grayDelKeys) {
+    // 获得父 Namespace 的最后有效 Release 对象
     Release parentLatestRelease = findLatestActiveRelease(parentNamespace);
+    // 获得父 Namespace 的配置项
     Map<String, String> parentConfigurations = parentLatestRelease != null ?
             gson.fromJson(parentLatestRelease.getConfigurations(),
                     GsonType.CONFIG) : new HashMap<>();
+    // 获得父 Namespace 的 releaseId 属性
     long baseReleaseId = parentLatestRelease == null ? 0 : parentLatestRelease.getId();
-
+// 合并配置项
     Map<String, String> configsToPublish = mergeConfiguration(parentConfigurations, childNamespaceItems);
 
     if(!(grayDelKeys == null || grayDelKeys.size()==0)){
@@ -221,7 +249,7 @@ public class ReleaseService {
         configsToPublish.remove(key);
       }
     }
-
+    // 发布子 Namespace 的 Release
     return branchRelease(parentNamespace, childNamespace, releaseName, releaseComment,
         configsToPublish, baseReleaseId, operator, ReleaseOperation.GRAY_RELEASE, isEmergencyPublish,
         childNamespaceItems.keySet());
@@ -247,15 +275,35 @@ public class ReleaseService {
     }
   }
 
+  /**
+   * 当 NamespaceLock.dataChangeCreatedBy 是当前管理员时，抛出 BadRequestException 异常，从而实现限制修改人。
+   * @param namespace
+   * @param isEmergencyPublish
+   * @param operator
+   */
   private void checkLock(Namespace namespace, boolean isEmergencyPublish, String operator) {
     if (!isEmergencyPublish) {
-      NamespaceLock lock = namespaceLockService.findLock(namespace.getId());
+      NamespaceLock lock = namespaceLockService.findLock(namespace.getId());//根据NamespaceId获得NamespaceLock
+      // 校验锁定人是否是当前管理员。若是，抛出 BadRequestException 异常
       if (lock != null && lock.getDataChangeCreatedBy().equals(operator)) {
         throw new BadRequestException("Config can not be published by yourself.");
       }
     }
   }
 
+  /**
+   * 在父 Namespace 发布 Release 后，会调用 #mergeFromMasterAndPublishBranch(...) 方法，
+   * 自动将 父 Namespace (主干) 合并到子 Namespace (分支)，并进行一次子 Namespace 的发布
+   * @param parentNamespace
+   * @param childNamespace
+   * @param parentNamespaceItems
+   * @param releaseName
+   * @param releaseComment
+   * @param operator
+   * @param masterPreviousRelease
+   * @param parentRelease
+   * @param isEmergencyPublish
+   */
   private void mergeFromMasterAndPublishBranch(Namespace parentNamespace, Namespace childNamespace,
                                                Map<String, String> parentNamespaceItems,
                                                String releaseName, String releaseComment,
@@ -321,11 +369,14 @@ public class ReleaseService {
   private Release masterRelease(Namespace namespace, String releaseName, String releaseComment,
                                 Map<String, String> configurations, String operator,
                                 int releaseOperation, Map<String, Object> operationContext) {
+    // 获得最后有效的 Release 对象
     Release lastActiveRelease = findLatestActiveRelease(namespace);
     long previousReleaseId = lastActiveRelease == null ? 0 : lastActiveRelease.getId();
+    // 创建 Release 对象，并保存到数据库
     Release release = createRelease(namespace, releaseName, releaseComment,
                                     configurations, operator);
 
+    // 创建 ReleaseHistory 对象，并保存到数据库
     releaseHistoryService.createReleaseHistory(namespace.getAppId(), namespace.getClusterName(),
                                                namespace.getNamespaceName(), namespace.getClusterName(),
                                                release.getId(), previousReleaseId, releaseOperation,
@@ -334,23 +385,41 @@ public class ReleaseService {
     return release;
   }
 
+  /**
+   * 分支发布
+   * @param parentNamespace
+   * @param childNamespace
+   * @param releaseName
+   * @param releaseComment
+   * @param configurations
+   * @param baseReleaseId
+   * @param operator
+   * @param releaseOperation
+   * @param isEmergencyPublish
+   * @param branchReleaseKeys
+   * @return
+   */
   private Release branchRelease(Namespace parentNamespace, Namespace childNamespace,
                                 String releaseName, String releaseComment,
                                 Map<String, String> configurations, long baseReleaseId,
                                 String operator, int releaseOperation, boolean isEmergencyPublish, Collection<String> branchReleaseKeys) {
+    // 获得父 Namespace 最后有效的 Release 对象
     Release previousRelease = findLatestActiveRelease(childNamespace.getAppId(),
                                                       childNamespace.getClusterName(),
                                                       childNamespace.getNamespaceName());
+    // 获得父 Namespace 最后有效的 Release 对象的编号
     long previousReleaseId = previousRelease == null ? 0 : previousRelease.getId();
 
+    // 创建 Map ，用于 ReleaseHistory 对象的 `operationContext` 属性。
     Map<String, Object> releaseOperationContext = Maps.newHashMap();
     releaseOperationContext.put(ReleaseOperationContext.BASE_RELEASE_ID, baseReleaseId);
     releaseOperationContext.put(ReleaseOperationContext.IS_EMERGENCY_PUBLISH, isEmergencyPublish);
     releaseOperationContext.put(ReleaseOperationContext.BRANCH_RELEASE_KEYS, branchReleaseKeys);
-
+    // 创建子 Namespace 的 Release 对象，并保存
     Release release =
         createRelease(childNamespace, releaseName, releaseComment, configurations, operator);
 
+    // 更新 GrayReleaseRule 的 releaseId 属性
     //update gray release rules
     GrayReleaseRule grayReleaseRule = namespaceBranchService.updateRulesReleaseId(childNamespace.getAppId(),
                                                                                   parentNamespace.getClusterName(),
@@ -358,6 +427,7 @@ public class ReleaseService {
                                                                                   childNamespace.getClusterName(),
                                                                                   release.getId(), operator);
 
+    // 创建 ReleaseHistory 对象，并保存
     if (grayReleaseRule != null) {
       releaseOperationContext.put(ReleaseOperationContext.RULES, GrayReleaseRuleItemTransformer
           .batchTransformFromJSON(grayReleaseRule.getRules()));
@@ -371,6 +441,12 @@ public class ReleaseService {
     return release;
   }
 
+  /**
+   * 合并配置项
+   * @param baseConfigurations
+   * @param coverConfigurations
+   * @return
+   */
   private Map<String, String> mergeConfiguration(Map<String, String> baseConfigurations,
                                                  Map<String, String> coverConfigurations) {
     Map<String, String> result = new HashMap<>();
@@ -387,7 +463,11 @@ public class ReleaseService {
     return result;
   }
 
-
+  /**
+   *  根据namespaceid从数据库表item获得对应的数据项，然后放到map中
+   * @param namespace
+   * @return
+   */
   private Map<String, String> getNamespaceItems(Namespace namespace) {
     List<Item> items = itemService.findItemsWithoutOrdered(namespace.getId());
     Map<String, String> configurations = new HashMap<>();
@@ -414,9 +494,12 @@ public class ReleaseService {
     release.setClusterName(namespace.getClusterName());
     release.setNamespaceName(namespace.getNamespaceName());
     release.setConfigurations(gson.toJson(configurations));
+    // 保存 Release 对象
     release = releaseRepository.save(release);
 
+    //发布完进行解锁
     namespaceLockService.unlock(namespace.getId());
+    // 记录 Audit 到数据库中
     auditService.audit(Release.class.getSimpleName(), release.getId(), Audit.OP.INSERT,
                        release.getDataChangeCreatedBy());
 

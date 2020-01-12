@@ -14,6 +14,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+
+/**
+ * 对象创建监听器，目前监听 AppCreationEvent 和 AppNamespaceCreationEvent 事件
+ */
 @Component
 public class CreationListener {
 
@@ -32,19 +36,28 @@ public class CreationListener {
     this.namespaceAPI = namespaceAPI;
   }
 
+  /**
+   * 监听 AppCreationEvent 事件
+   * @param event
+   */
   @EventListener
   public void onAppCreationEvent(AppCreationEvent event) {
-    AppDTO appDTO = BeanUtils.transform(AppDTO.class, event.getApp());
-    List<Env> envs = portalSettings.getActiveEnvs();
+    AppDTO appDTO = BeanUtils.transform(AppDTO.class, event.getApp());//获得事件传入的消息
+    List<Env> envs = portalSettings.getActiveEnvs();//获得环境列表
     for (Env env : envs) {
       try {
-        appAPI.createApp(env, appDTO);
+        appAPI.createApp(env, appDTO);//针对每个环境发起调用admin端的请求
       } catch (Throwable e) {
         logger.error("Create app failed. appId = {}, env = {})", appDTO.getAppId(), env, e);
         Tracer.logError(String.format("Create app failed. appId = %s, env = %s", appDTO.getAppId(), env), e);
       }
     }
   }
+
+  /**
+   * 监听AppNamespaceCreationEvent事件，发起请求到admin端完成操作
+   * @param event
+   */
 
   @EventListener
   public void onAppNamespaceCreationEvent(AppNamespaceCreationEvent event) {

@@ -2,6 +2,8 @@ package com.ctrip.framework.apollo.tracer.spi;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * 这个接口的用途？？？
  */
 public interface Transaction {
   String SUCCESS = "0";

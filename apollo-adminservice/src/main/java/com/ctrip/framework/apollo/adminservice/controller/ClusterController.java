@@ -27,22 +27,30 @@ public class ClusterController {
     this.clusterService = clusterService;
   }
 
+  /**
+   * 集群的创建接口
+   * @param appId
+   * @param autoCreatePrivateNamespace
+   * @param dto
+   * @return
+   */
   @PostMapping("/apps/{appId}/clusters")
   public ClusterDTO create(@PathVariable("appId") String appId,
                            @RequestParam(value = "autoCreatePrivateNamespace", defaultValue = "true") boolean autoCreatePrivateNamespace,
                            @Valid @RequestBody ClusterDTO dto) {
     Cluster entity = BeanUtils.transform(Cluster.class, dto);
-    Cluster managedEntity = clusterService.findOne(appId, entity.getName());
+    Cluster managedEntity = clusterService.findOne(appId, entity.getName());//校验是否已经存在
     if (managedEntity != null) {
       throw new BadRequestException("cluster already exist.");
     }
-
+    // 保存 Cluster 对象，并创建其 Namespace
     if (autoCreatePrivateNamespace) {
       entity = clusterService.saveWithInstanceOfAppNamespaces(entity);
     } else {
+      // 保存 Cluster 对象，不创建其 Namespace
       entity = clusterService.saveWithoutInstanceOfAppNamespaces(entity);
     }
-
+    // 将保存的 Cluster 对象转换成 ClusterDTO
     return BeanUtils.transform(ClusterDTO.class, entity);
   }
 
@@ -79,6 +87,12 @@ public class ClusterController {
     return BeanUtils.transform(ClusterDTO.class, cluster);
   }
 
+  /**
+   * 通过appId+clusterName来唯一确定集群
+   * @param appId
+   * @param clusterName
+   * @return
+   */
   @GetMapping("/apps/{appId}/cluster/{clusterName}/unique")
   public boolean isAppIdUnique(@PathVariable("appId") String appId,
                                @PathVariable("clusterName") String clusterName) {

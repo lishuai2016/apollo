@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * @author lepdou 2017-08-30
+ * 跳转到登录界面
  */
 @Controller
 public class SignInController {

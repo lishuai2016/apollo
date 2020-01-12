@@ -33,6 +33,9 @@ public class BizConfig extends RefreshableConfig {
       new TypeToken<Map<Long, Integer>>() {
       }.getType();
 
+  /**
+   * 这里通过@Component会自动注入BizDBPropertySource？？？
+   */
   private final BizDBPropertySource propertySource;
 
   public BizConfig(final BizDBPropertySource propertySource) {
@@ -43,7 +46,7 @@ public class BizConfig extends RefreshableConfig {
   protected List<RefreshablePropertySource> getRefreshablePropertySources() {
     return Collections.singletonList(propertySource);
   }
-
+  //获取注册中心的地址 Eureka Server 共享该配置，从而形成 Eureka Server 集群。
   public List<String> eurekaServiceUrls() {
     String configuration = getValue("eureka.service.url", "");
     if (Strings.isNullOrEmpty(configuration)) {

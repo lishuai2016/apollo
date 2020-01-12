@@ -16,7 +16,7 @@ public class AnnotatedBean {
 
   private int timeout;
   private int batch;
-  private List<JsonBean> jsonBeans;
+  private List<JsonBean> jsonBeans;//支持这个字符串数据样式的配置
 
   /**
    * ApolloJsonValue annotated on fields example, the default value is specified as empty list - []

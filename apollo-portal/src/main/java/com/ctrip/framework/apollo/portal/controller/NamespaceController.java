@@ -120,6 +120,14 @@ public class NamespaceController {
     return namespaceService.findPublicNamespaceForAssociatedNamespace(Env.valueOf(env), appId, clusterName, namespaceName);
   }
 
+  /**
+   * 关联namespace调用的是createNamespace
+   *
+   *
+   * @param appId
+   * @param models
+   * @return
+   */
   @PreAuthorize(value = "@permissionValidator.hasCreateNamespacePermission(#appId)")
   @PostMapping("/apps/{appId}/namespaces")
   public ResponseEntity<Void> createNamespace(@PathVariable String appId,
@@ -130,6 +138,7 @@ public class NamespaceController {
     String namespaceName = models.get(0).getNamespace().getNamespaceName();
     String operator = userInfoHolder.getUser().getUserId();
 
+    //初始化namespace对象的角色
     roleInitializationService.initNamespaceRoles(appId, namespaceName, operator);
     roleInitializationService.initNamespaceEnvRoles(appId, namespaceName, operator);
 
@@ -139,6 +148,7 @@ public class NamespaceController {
                                                  namespace.getClusterName(), namespace.getNamespaceName());
 
       try {
+        // 创建 Namespace 对象
         namespaceService.createNamespace(Env.valueOf(model.getEnv()), namespace);
       } catch (Exception e) {
         logger.error("create namespace fail.", e);
@@ -147,7 +157,7 @@ public class NamespaceController {
                         namespace.getNamespaceName()), e);
       }
     }
-
+    // 授予 Namespace Role 给当前管理员
     namespaceService.assignNamespaceRoleToOperator(appId, namespaceName,userInfoHolder.getUser().getUserId());
 
     return ResponseEntity.ok().build();
@@ -186,6 +196,13 @@ public class NamespaceController {
     return BeanUtils.transform(AppNamespaceDTO.class, appNamespace);
   }
 
+  /**
+   * 创建AppNamespace
+   * @param appId
+   * @param appendNamespacePrefix
+   * @param appNamespace
+   * @return
+   */
   @PreAuthorize(value = "@permissionValidator.hasCreateAppNamespacePermission(#appId, #appNamespace)")
   @PostMapping("/apps/{appId}/appnamespaces")
   public AppNamespace createAppNamespace(@PathVariable String appId,
@@ -193,11 +210,15 @@ public class NamespaceController {
       @Valid @RequestBody AppNamespace appNamespace) {
     AppNamespace createdAppNamespace = appNamespaceService.createAppNamespaceInLocal(appNamespace, appendNamespacePrefix);
 
+    // 赋予权限，若满足如下任一条件：
+// 1. 公开类型的 AppNamespace
+// 2. 私有类型的 AppNamespace ，并且允许 App 管理员创建私有类型的 AppNamespace
     if (portalConfig.canAppAdminCreatePrivateNamespace() || createdAppNamespace.isPublic()) {
+      //给namespace分配角色分配和发布
       namespaceService.assignNamespaceRoleToOperator(appId, appNamespace.getName(),
           userInfoHolder.getUser().getUserId());
     }
-
+// 发布 AppNamespaceCreationEvent 创建事件
     publisher.publishEvent(new AppNamespaceCreationEvent(createdAppNamespace));
 
     return createdAppNamespace;

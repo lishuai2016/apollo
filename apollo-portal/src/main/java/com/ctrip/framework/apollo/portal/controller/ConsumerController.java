@@ -31,6 +31,8 @@ import java.util.Objects;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * 第三方应用接入
  */
 @RestController
 public class ConsumerController {
@@ -44,6 +46,12 @@ public class ConsumerController {
   }
 
 
+  /**
+   * 创建一个consumer
+   * @param consumer
+   * @param expires
+   * @return
+   */
   @Transactional
   @PreAuthorize(value = "@permissionValidator.isSuperAdmin()")
   @PostMapping(value = "/consumers")
@@ -71,6 +79,14 @@ public class ConsumerController {
     return consumerService.getConsumerTokenByAppId(appId);
   }
 
+  /**
+   * 给consumer分配NamespaceRole角色
+   * @param token
+   * @param type
+   * @param envs
+   * @param namespace
+   * @return
+   */
   @PreAuthorize(value = "@permissionValidator.isSuperAdmin()")
   @PostMapping(value = "/consumers/{token}/assign-role")
   public List<ConsumerRole> assignNamespaceRoleToConsumer(@PathVariable String token,
@@ -84,9 +100,11 @@ public class ConsumerController {
     if (StringUtils.isEmpty(appId)) {
       throw new BadRequestException("Params(AppId) can not be empty.");
     }
+    // 授权 App 的 Role 给 Consumer
     if (Objects.equals("AppRole", type)) {
       return Collections.singletonList(consumerService.assignAppRoleToConsumer(token, appId));
     } else {
+      // 授权 Namespace 的 Role 给 Consumer
       if (StringUtils.isEmpty(namespaceName)) {
         throw new BadRequestException("Params(NamespaceName) can not be empty.");
       }

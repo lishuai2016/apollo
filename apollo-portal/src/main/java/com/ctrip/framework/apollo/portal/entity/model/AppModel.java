@@ -6,6 +6,10 @@ import java.util.Set;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 
+/**
+ com.ctrip.framework.apollo.portal.entity.model 包下，负责接收来自 Portal 界面的复杂请求对象
+ */
+
 public class AppModel {
 
   @NotBlank(message = "name cannot be blank")

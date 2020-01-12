@@ -10,6 +10,10 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Singleton;
 
+/**
+ * Guice小型的容器
+ */
+
 public class SpringInjector {
   private static volatile Injector s_injector;
   private static final Object lock = new Object();

@@ -19,6 +19,13 @@ import java.util.Objects;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 把DBConfig中的ServerConfig的配置数据更新到内存中
+ *
+ * 提供给 Config Service、Admin Service 服务使用。
+相比 PortalDBPropertySource ，BizDBPropertySource 多了多机房部署的 Cluster 过滤。
+在 #refresh() 实现方法中，按照默认 的 Cluster、数据中心的 Cluster、JVM 启动参数的 Cluster ，
+逐个匹配 ServerConfig 的 cluster 字段。若匹配，最终会更新到属性源。
+ *
  */
 @Component
 public class BizDBPropertySource extends RefreshablePropertySource {
@@ -44,6 +51,7 @@ public class BizDBPropertySource extends RefreshablePropertySource {
   protected void refresh() {
     Iterable<ServerConfig> dbConfigs = serverConfigRepository.findAll();
 
+    // 创建配置 Map ，将匹配的 Cluster 的 ServerConfig 添加到其中
     Map<String, Object> newConfigs = Maps.newHashMap();
     //default cluster's configs
     for (ServerConfig config : dbConfigs) {
@@ -70,6 +78,7 @@ public class BizDBPropertySource extends RefreshablePropertySource {
       }
     }
 
+// 缓存，更新到属性源
     //put to environment
     for (Map.Entry<String, Object> config: newConfigs.entrySet()){
       String key = config.getKey();

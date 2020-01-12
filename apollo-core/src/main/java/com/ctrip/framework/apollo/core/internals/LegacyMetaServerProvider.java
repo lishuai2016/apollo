@@ -10,6 +10,14 @@ import java.util.Properties;
 
 /**
  * For legacy meta server configuration use, i.e. apollo-env.properties
+ *
+ * 因为这个类是在core包下：
+ * config service
+ * admin service
+ * portal service
+ * 都会加载这个类，获得meta server的地址
+ *
+ * 其实应该只有portal service需要加载这个其他的两个没必要？？？
  */
 public class LegacyMetaServerProvider implements MetaServerProvider {
 

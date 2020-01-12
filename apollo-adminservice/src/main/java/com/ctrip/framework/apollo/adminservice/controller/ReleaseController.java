@@ -29,6 +29,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ *
+ */
+
 @RestController
 public class ReleaseController {
 
@@ -37,7 +41,7 @@ public class ReleaseController {
 
   private final ReleaseService releaseService;
   private final NamespaceService namespaceService;
-  private final MessageSender messageSender;
+  private final MessageSender messageSender;//消息发布接口
   private final NamespaceBranchService namespaceBranchService;
 
   public ReleaseController(
@@ -98,6 +102,18 @@ public class ReleaseController {
     return BeanUtils.transform(ReleaseDTO.class, release);
   }
 
+  /**
+   * 发布消息接口
+   *
+   * @param appId
+   * @param clusterName
+   * @param namespaceName
+   * @param releaseName
+   * @param releaseComment
+   * @param operator
+   * @param isEmergencyPublish
+   * @return
+   */
   @Transactional
   @PostMapping("/apps/{appId}/clusters/{clusterName}/namespaces/{namespaceName}/releases")
   public ReleaseDTO publish(@PathVariable("appId") String appId,
@@ -107,21 +123,24 @@ public class ReleaseController {
                             @RequestParam(name = "comment", required = false) String releaseComment,
                             @RequestParam("operator") String operator,
                             @RequestParam(name = "isEmergencyPublish", defaultValue = "false") boolean isEmergencyPublish) {
+    //定位一个配置文件
     Namespace namespace = namespaceService.findOne(appId, clusterName, namespaceName);
     if (namespace == null) {
       throw new NotFoundException(String.format("Could not find namespace for %s %s %s", appId,
                                                 clusterName, namespaceName));
     }
+    // 发布 Namespace 的配置【保存Release和Releasehistory到数据库以及对应的audit信息】
     Release release = releaseService.publish(namespace, releaseName, releaseComment, operator, isEmergencyPublish);
 
     //send release message
     Namespace parentNamespace = namespaceService.findParentNamespace(namespace);
-    String messageCluster;
-    if (parentNamespace != null) {
+    String messageCluster;//查找集群的名称
+    if (parentNamespace != null) { //  有父 Namespace ，说明是灰度发布，使用父 Namespace 的集群名
       messageCluster = parentNamespace.getClusterName();
     } else {
       messageCluster = clusterName;
     }
+    //发送消息，保存ReleaseMessage到数据库
     messageSender.sendMessage(ReleaseMessageKeyGenerator.generate(appId, messageCluster, namespaceName),
                               Topics.APOLLO_RELEASE_TOPIC);
     return BeanUtils.transform(ReleaseDTO.class, release);

@@ -24,6 +24,7 @@ public class SimpleApolloConfigDemo {
   private Config config;
 
   public SimpleApolloConfigDemo() {
+    //添加监听器，当配置变化时获得通知
     ConfigChangeListener changeListener = new ConfigChangeListener() {
       @Override
       public void onChange(ConfigChangeEvent changeEvent) {
@@ -36,7 +37,7 @@ public class SimpleApolloConfigDemo {
         }
       }
     };
-    config = ConfigService.getAppConfig();
+    config = ConfigService.getAppConfig();//问题：这个config如何生成的？？？
     config.addChangeListener(changeListener);
   }
 

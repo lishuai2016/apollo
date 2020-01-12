@@ -5,6 +5,7 @@ import java.util.Properties;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 负责从远程的 Config Service 读取配置
  */
 public interface ConfigRepository {
   /**

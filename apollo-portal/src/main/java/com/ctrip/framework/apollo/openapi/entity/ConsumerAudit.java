@@ -14,6 +14,7 @@ import javax.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * ConsumerAudit 和 Audit 功能类似
  */
 @Entity
 @Table(name = "ConsumerAudit")

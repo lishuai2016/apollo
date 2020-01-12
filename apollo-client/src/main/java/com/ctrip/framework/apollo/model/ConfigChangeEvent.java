@@ -6,10 +6,11 @@ import java.util.Set;
 /**
  * A change event when a namespace's config is changed.
  * @author Jason Song(song_s@ctrip.com)
+ * 配置变化的事件对象
  */
 public class ConfigChangeEvent {
   private final String m_namespace;
-  private final Map<String, ConfigChange> m_changes;
+  private final Map<String, ConfigChange> m_changes;//标记那些配置项变化了
 
   /**
    * Constructor.

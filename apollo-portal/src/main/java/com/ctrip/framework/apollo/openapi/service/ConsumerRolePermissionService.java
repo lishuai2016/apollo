@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * ConsumerRole 权限校验 Service
  */
 @Service
 public class ConsumerRolePermissionService {
@@ -35,12 +36,13 @@ public class ConsumerRolePermissionService {
    * Check whether user has the permission
    */
   public boolean consumerHasPermission(long consumerId, String permissionType, String targetId) {
+    //1、首先查询数据库，看参数对应的权限是否存在
     Permission permission =
         permissionRepository.findTopByPermissionTypeAndTargetId(permissionType, targetId);
     if (permission == null) {
       return false;
     }
-
+    //2、查询用户的角色
     List<ConsumerRole> consumerRoles = consumerRoleRepository.findByConsumerId(consumerId);
     if (CollectionUtils.isEmpty(consumerRoles)) {
       return false;
@@ -48,11 +50,12 @@ public class ConsumerRolePermissionService {
 
     Set<Long> roleIds =
         consumerRoles.stream().map(ConsumerRole::getRoleId).collect(Collectors.toSet());
+    //3、根据角色获得角色权限
     List<RolePermission> rolePermissions = rolePermissionRepository.findByRoleIdIn(roleIds);
     if (CollectionUtils.isEmpty(rolePermissions)) {
       return false;
     }
-
+    //4、查看角色对应的权限和用户传入的参数对应的权限是否一致
     for (RolePermission rolePermission : rolePermissions) {
       if (rolePermission.getPermissionId() == permission.getId()) {
         return true;

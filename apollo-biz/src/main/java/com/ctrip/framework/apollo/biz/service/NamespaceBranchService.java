@@ -46,25 +46,25 @@ public class NamespaceBranchService {
 
   @Transactional
   public Namespace createBranch(String appId, String parentClusterName, String namespaceName, String operator){
-    Namespace childNamespace = findBranch(appId, parentClusterName, namespaceName);
+    Namespace childNamespace = findBranch(appId, parentClusterName, namespaceName);//查找子namespace
     if (childNamespace != null){
       throw new BadRequestException("namespace already has branch");
     }
 
-    Cluster parentCluster = clusterService.findOne(appId, parentClusterName);
+    Cluster parentCluster = clusterService.findOne(appId, parentClusterName);//查找父cluster
     if (parentCluster == null || parentCluster.getParentClusterId() != 0) {
       throw new BadRequestException("cluster not exist or illegal cluster");
     }
 
-    //create child cluster
+    //create child cluster 构建一个子集群对象
     Cluster childCluster = createChildCluster(appId, parentCluster, namespaceName, operator);
-
+    //保存一个子集群到数据库
     Cluster createdChildCluster = clusterService.saveWithoutInstanceOfAppNamespaces(childCluster);
 
-    //create child namespace
+    //create child namespace 构建一个子namespace
     childNamespace = createNamespaceBranch(appId, createdChildCluster.getName(),
                                                         namespaceName, operator);
-    return namespaceService.save(childNamespace);
+    return namespaceService.save(childNamespace);//保存子namespace到数据库
   }
 
   public Namespace findBranch(String appId, String parentClusterName, String namespaceName) {
@@ -82,25 +82,27 @@ public class NamespaceBranchService {
                                     String branchName, GrayReleaseRule newRules) {
     doUpdateBranchGrayRules(appId, clusterName, namespaceName, branchName, newRules, true, ReleaseOperation.APPLY_GRAY_RULES);
   }
-
+//更新子 Namespace 的灰度发布规则。
   private void doUpdateBranchGrayRules(String appId, String clusterName, String namespaceName,
                                               String branchName, GrayReleaseRule newRules, boolean recordReleaseHistory, int releaseOperation) {
+    // 获得子 Namespace 的灰度发布规则
     GrayReleaseRule oldRules = grayReleaseRuleRepository
         .findTopByAppIdAndClusterNameAndNamespaceNameAndBranchNameOrderByIdDesc(appId, clusterName, namespaceName, branchName);
-
+// 获得最新的子 Namespace 的 Release 对象
     Release latestBranchRelease = releaseService.findLatestActiveRelease(appId, branchName, namespaceName);
-
+// 获得最新的子 Namespace 的 Release 对象的编号
     long latestBranchReleaseId = latestBranchRelease != null ? latestBranchRelease.getId() : 0;
-
+// 设置 GrayReleaseRule 的 `releaseId`
     newRules.setReleaseId(latestBranchReleaseId);
-
+    // 保存新的 GrayReleaseRule 对象
     grayReleaseRuleRepository.save(newRules);
 
+    // 删除老的 GrayReleaseRule 对象
     //delete old rules
     if (oldRules != null) {
       grayReleaseRuleRepository.delete(oldRules);
     }
-
+    // 若需要，创建 ReleaseHistory 对象，并保存
     if (recordReleaseHistory) {
       Map<String, Object> releaseOperationContext = Maps.newHashMap();
       releaseOperationContext.put(ReleaseOperationContext.RULES, GrayReleaseRuleItemTransformer
@@ -114,17 +116,28 @@ public class NamespaceBranchService {
     }
   }
 
+  /**
+   * 更新 GrayReleaseRule 的 releaseId 属性到数据库中
+   * @param appId
+   * @param clusterName
+   * @param namespaceName
+   * @param branchName
+   * @param latestReleaseId
+   * @param operator
+   * @return
+   */
   @Transactional
   public GrayReleaseRule updateRulesReleaseId(String appId, String clusterName,
                                    String namespaceName, String branchName,
                                    long latestReleaseId, String operator) {
+    // 获得老的 GrayReleaseRule 对象
     GrayReleaseRule oldRules = grayReleaseRuleRepository.
         findTopByAppIdAndClusterNameAndNamespaceNameAndBranchNameOrderByIdDesc(appId, clusterName, namespaceName, branchName);
 
     if (oldRules == null) {
       return null;
     }
-
+// 创建新的 GrayReleaseRule 对象
     GrayReleaseRule newRules = new GrayReleaseRule();
     newRules.setBranchStatus(NamespaceBranchStatus.ACTIVE);
     newRules.setReleaseId(latestReleaseId);
@@ -135,9 +148,9 @@ public class NamespaceBranchService {
     newRules.setBranchName(oldRules.getBranchName());
     newRules.setDataChangeCreatedBy(operator);
     newRules.setDataChangeLastModifiedBy(operator);
-
+    // 保存新的 GrayReleaseRule 对象
     grayReleaseRuleRepository.save(newRules);
-
+// 删除老的 GrayReleaseRule 对象
     grayReleaseRuleRepository.delete(oldRules);
 
     return newRules;

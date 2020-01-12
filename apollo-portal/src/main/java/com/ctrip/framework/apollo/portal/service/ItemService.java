@@ -67,25 +67,26 @@ public class ItemService {
         model.getFormat() == ConfigFileFormat.Properties ? propertyResolver : fileTextResolver;
 
     ItemChangeSets changeSets = resolver.resolve(namespaceId, configText,
-        itemAPI.findItems(appId, env, clusterName, namespaceName));
-    if (changeSets.isEmpty()) {
+        itemAPI.findItems(appId, env, clusterName, namespaceName));//通过 itemAPI.findItems查找该配置文件对应的配置项
+    if (changeSets.isEmpty()) {//没有更新直接返回
       return;
     }
 
     changeSets.setDataChangeLastModifiedBy(userInfoHolder.getUser().getUserId());
-    updateItems(appId, env, clusterName, namespaceName, changeSets);
+    updateItems(appId, env, clusterName, namespaceName, changeSets);//更新配置项集合
 
     Tracer.logEvent(TracerEventType.MODIFY_NAMESPACE_BY_TEXT,
         String.format("%s+%s+%s+%s", appId, env, clusterName, namespaceName));
     Tracer.logEvent(TracerEventType.MODIFY_NAMESPACE, String.format("%s+%s+%s+%s", appId, env, clusterName, namespaceName));
   }
-
+  //调用admin接口来更新配置项
   public void updateItems(String appId, Env env, String clusterName, String namespaceName, ItemChangeSets changeSets){
     itemAPI.updateItemsByChangeSet(appId, env, clusterName, namespaceName, changeSets);
   }
 
-
+  //通过管理页面创建一个配置项
   public ItemDTO createItem(String appId, Env env, String clusterName, String namespaceName, ItemDTO item) {
+    //找到配置文件
     NamespaceDTO namespace = namespaceAPI.loadNamespace(appId, env, clusterName, namespaceName);
     if (namespace == null) {
       throw new BadRequestException(

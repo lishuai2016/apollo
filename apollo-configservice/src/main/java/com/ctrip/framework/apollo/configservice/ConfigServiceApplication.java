@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
  * @author Jason Song(song_s@ctrip.com)
  */
 
-@EnableEurekaServer
+@EnableEurekaServer // 启动 Eureka Server
 @EnableAspectJAutoProxy
 @EnableAutoConfiguration // (exclude = EurekaClientConfigBean.class)
 @Configuration

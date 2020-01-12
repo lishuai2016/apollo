@@ -12,6 +12,8 @@ import javax.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * 给portal服务使用
  */
 @Entity
 @Table(name = "ServerConfig")

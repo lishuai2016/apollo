@@ -12,6 +12,7 @@ import javax.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * appId + clusterName + namespaceName 字段，指向对应的 Namespace 记录
  */
 @Entity
 @Table(name = "Release")

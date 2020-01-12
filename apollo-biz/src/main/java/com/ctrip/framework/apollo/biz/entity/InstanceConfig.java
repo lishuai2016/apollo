@@ -15,6 +15,14 @@ import javax.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * Instance Config 实体，记录 Instance 对 Namespace 的配置的获取情况。
+ * 如果一个 Instance 使用了多个 Namespace ，则会记录多条 InstanceConfig
+ *
+1、instanceId + configAppId + ConfigNamespaceName 组成唯一索引，因为一个 Instance 可以使用多个 Namespace 。
+2、releaseKey 字段，Release Key ，对应 Release.releaseKey 字段。
+3、releaseDeliveryTime 字段，配置下发时间。
+4、通过 releaseKey + releaseDeliveryTime 字段，可以很容易判断 Instance 在当前 Namespace 获取配置的情况。
+5、configClusterName 字段，Cluster 名字。
  */
 @Entity
 @Table(name = "InstanceConfig")

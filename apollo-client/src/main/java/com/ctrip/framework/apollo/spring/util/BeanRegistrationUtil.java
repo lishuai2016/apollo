@@ -16,6 +16,16 @@ public class BeanRegistrationUtil {
     return registerBeanDefinitionIfNotExists(registry, beanName, beanClass, null);
   }
 
+  /**
+   调用 BeanRegistrationUtil#registerBeanDefinitionIfNotExists(registry, beanName, beanClass) 方法，
+   注册 beanClass 到 BeanDefinitionRegistry 中，当且仅当 beanName 和 beanClass 都不存在对应的 BeanDefinition 时
+   ，才会进行注册
+   * @param registry
+   * @param beanName
+   * @param beanClass
+   * @param extraPropertyValues
+   * @return
+   */
   public static boolean registerBeanDefinitionIfNotExists(BeanDefinitionRegistry registry, String beanName,
                                                           Class<?> beanClass, Map<String, Object> extraPropertyValues) {
     if (registry.containsBeanDefinition(beanName)) {
@@ -39,7 +49,7 @@ public class BeanRegistrationUtil {
       }
     }
 
-    registry.registerBeanDefinition(beanName, beanDefinition);
+    registry.registerBeanDefinition(beanName, beanDefinition);//注册bean
 
     return true;
   }

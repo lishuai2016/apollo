@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.ServiceLoader;
 
 public class ServiceBootstrap {
+  //获得这个接口的第一个实现类
   public static <S> S loadFirst(Class<S> clazz) {
     Iterator<S> iterator = loadAll(clazz);
     if (!iterator.hasNext()) {
@@ -19,6 +20,12 @@ public class ServiceBootstrap {
     return iterator.next();
   }
 
+  /**
+   * 根据jdk的spi机制，加载一个接口的实现类
+   * @param clazz
+   * @param <S>
+   * @return
+   */
   public static <S> Iterator<S> loadAll(Class<S> clazz) {
     ServiceLoader<S> loader = ServiceLoader.load(clazz);
 

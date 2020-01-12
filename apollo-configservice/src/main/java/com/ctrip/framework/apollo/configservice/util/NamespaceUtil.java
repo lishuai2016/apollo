@@ -16,6 +16,7 @@ public class NamespaceUtil {
     this.appNamespaceServiceWithCache = appNamespaceServiceWithCache;
   }
 
+  //去除后缀
   public String filterNamespaceName(String namespaceName) {
     if (namespaceName.toLowerCase().endsWith(".properties")) {
       int dotIndex = namespaceName.lastIndexOf(".");
@@ -25,6 +26,12 @@ public class NamespaceUtil {
     return namespaceName;
   }
 
+  /**
+   * 先根据appId+namespaceName查找，没有的话再根据namespaceName查找
+   * @param appId
+   * @param namespaceName
+   * @return
+   */
   public String normalizeNamespace(String appId, String namespaceName) {
     AppNamespace appNamespace = appNamespaceServiceWithCache.findByAppIdAndNamespace(appId, namespaceName);
     if (appNamespace != null) {

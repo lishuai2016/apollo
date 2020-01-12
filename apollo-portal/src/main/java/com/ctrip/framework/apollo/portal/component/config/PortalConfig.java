@@ -19,6 +19,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+/**
+ * 门面服务的主配置文件
+ */
+
 @Component
 public class PortalConfig extends RefreshableConfig {
 
@@ -38,7 +42,7 @@ public class PortalConfig extends RefreshableConfig {
   }
 
   /***
-   * Level: important
+   * Level: important   获得当前支持的环境配置
    **/
   public List<Env> portalSupportedEnvs() {
     String[] configurations = getArrayProperty("apollo.portal.envs", new String[]{"FAT", "UAT", "PRO"});

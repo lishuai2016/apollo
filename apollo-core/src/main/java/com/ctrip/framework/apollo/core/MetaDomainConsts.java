@@ -25,6 +25,11 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 /**
+ *
+ * 这个类会尝试从MetaServerProviders加载meta server的地址，顺序是：
+ * LegacyMetaServerProvider
+ * 如果获取不到使用http://apollo.meta作为默认的地址，用户可以基于spi机制自己定时MetaServerProvider的实现类
+ *
  * The meta domain will try to load the meta server address from MetaServerProviders, the default ones are:
  *
  * <ul>
@@ -37,29 +42,36 @@ import com.google.common.collect.Maps;
  * 3rd party MetaServerProvider could be injected by typical Java Service Loader pattern.
  *
  * @see com.ctrip.framework.apollo.core.internals.LegacyMetaServerProvider
+ *
+ *
+ * Meta Service 多环境的地址枚举类
+ *
  */
 public class MetaDomainConsts {
   public static final String DEFAULT_META_URL = "http://apollo.meta";
 
-  // env -> meta server address cache
+  // env -> meta server address cache  不同的环境缓存的meta service地址
   private static final Map<Env, String> metaServerAddressCache = Maps.newConcurrentMap();
   private static volatile List<MetaServerProvider> metaServerProviders = null;
 
   private static final long REFRESH_INTERVAL_IN_SECOND = 60;// 1 min
   private static final Logger logger = LoggerFactory.getLogger(MetaDomainConsts.class);
-  // comma separated meta server address -> selected single meta server address cache
+  // comma separated meta server address -> selected single meta server address cache. key是整个地址串  其实value只是保存了一个地址
   private static final Map<String, String> selectedMetaServerAddressCache = Maps.newConcurrentMap();
   private static final AtomicBoolean periodicRefreshStarted = new AtomicBoolean(false);
 
   private static final Object LOCK = new Object();
 
   /**
+   * 这个方法是该类外部访问的入口
+   *
+   * 根据环境获得meta server address地址，如果多个选择一个返回
    * Return one meta server address. If multiple meta server addresses are configured, will select one.
    */
   public static String getDomain(Env env) {
-    String metaServerAddress = getMetaServerAddress(env);
+    String metaServerAddress = getMetaServerAddress(env);   //这里拿到的可能包含多个用逗号分隔的地址串
     // if there is more than one address, need to select one
-    if (metaServerAddress.contains(",")) {
+    if (metaServerAddress.contains(",")) { //对多个地址串进行随机算法，获得其中一个
       return selectMetaServerAddress(metaServerAddress);
     }
     return metaServerAddress;
@@ -67,6 +79,7 @@ public class MetaDomainConsts {
 
   /**
    * Return meta server address. If multiple meta server addresses are configured, will return the comma separated string.
+    返回的内容可能包含逗号分隔的多个地址
    */
   public static String getMetaServerAddress(Env env) {
     if (!metaServerAddressCache.containsKey(env)) {
@@ -76,6 +89,12 @@ public class MetaDomainConsts {
     return metaServerAddressCache.get(env);
   }
 
+  /**
+   * 首先根据spi机制获得接口实现类列表，然后遍历列表获得metaAddress地址，并且把根据环境的类型来缓存不同的metaAddress
+   * 放入缓存metaServerAddressCache中
+   *
+   * @param env
+   */
   private static void initMetaServerAddress(Env env) {
     if (metaServerProviders == null) {
       synchronized (LOCK) {
@@ -87,7 +106,7 @@ public class MetaDomainConsts {
 
     String metaAddress = null;
 
-    for (MetaServerProvider provider : metaServerProviders) {
+    for (MetaServerProvider provider : metaServerProviders) {//遍历获得metaAddress
       metaAddress = provider.getMetaServerAddress(env);
       if (!Strings.isNullOrEmpty(metaAddress)) {
         logger.info("Located meta server address {} for env {} from {}", metaAddress, env,
@@ -104,9 +123,13 @@ public class MetaDomainConsts {
           metaAddress, env);
     }
 
-    metaServerAddressCache.put(env, metaAddress.trim());
+    metaServerAddressCache.put(env, metaAddress.trim());//缓存到本地map
   }
 
+  /**
+   * 返回spi机制下接口MetaServerProvider的全部实现类，并按照Oder的顺序排序，返回list对象
+   * @return
+   */
   private static List<MetaServerProvider> initMetaServerProviders() {
     Iterator<MetaServerProvider> metaServerProviderIterator = ServiceBootstrap.loadAll(MetaServerProvider.class);
 
@@ -115,7 +138,7 @@ public class MetaDomainConsts {
     Collections.sort(metaServerProviders, new Comparator<MetaServerProvider>() {
       @Override
       public int compare(MetaServerProvider o1, MetaServerProvider o2) {
-        // the smaller order has higher priority
+        // the smaller order has higher priority  order的顺序越小优先级越高
         return Integer.compare(o1.getOrder(), o2.getOrder());
       }
     });
@@ -124,6 +147,8 @@ public class MetaDomainConsts {
   }
 
   /**
+   * 从多个逗号分隔的meta server地址中获得一个返回
+   *
    * Select one available meta server from the comma separated meta server addresses, e.g.
    * http://1.2.3.4:8080,http://2.3.4.5:8080
    *
@@ -146,6 +171,7 @@ public class MetaDomainConsts {
     return metaAddressSelected;
   }
 
+  //更新selectedMetaServerAddressCache缓存的meta server地址
   private static void updateMetaServerAddresses(String metaServerAddresses) {
     logger.debug("Selecting meta server address for: {}", metaServerAddresses);
 
@@ -161,7 +187,7 @@ public class MetaDomainConsts {
 
       for (String address : metaServers) {
         address = address.trim();
-        //check whether /services/config is accessible
+        //check whether /services/config is accessible  测试服务是否可用
         if (NetUtil.pingUrl(address + "/services/config")) {
           // select the first available meta server
           selectedMetaServerAddressCache.put(metaServerAddresses, address);
@@ -190,6 +216,7 @@ public class MetaDomainConsts {
     }
   }
 
+  //定时刷新可用的meta server地址
   private static void schedulePeriodicRefresh() {
     ScheduledExecutorService scheduledExecutorService =
         Executors.newScheduledThreadPool(1, ApolloThreadFactory.create("MetaServiceLocator", true));

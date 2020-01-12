@@ -9,6 +9,9 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * @author Timothy Liu(timothy.liu@cvte.com)
+ *
+ * 角色和权限相关的配置
+ *
  */
 @Configuration
 public class RoleConfiguration {

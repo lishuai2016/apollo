@@ -12,6 +12,9 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * 每次只要不是输入quit会自动获取配置中心的最新的数据
+ *
  */
 public class AnnotationApplication {
   public static void main(String[] args) throws IOException {

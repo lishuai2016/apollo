@@ -31,6 +31,7 @@ import java.util.List;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 提供 Consumer、ConsumerToken、ConsumerAudit、ConsumerRole 相关的 Service 逻辑
  */
 @Service
 public class ConsumerService {
@@ -66,6 +67,12 @@ public class ConsumerService {
     this.userService = userService;
   }
 
+  /**
+   保存 Consumer 到数据库中
+   首先判断consumer是否存在以及判断用户是否存在，均合法保存到数据库
+   * @param consumer
+   * @return
+   */
 
   public Consumer createConsumer(Consumer consumer) {
     String appId = consumer.getAppId();
@@ -89,6 +96,12 @@ public class ConsumerService {
     return consumerRepository.save(consumer);
   }
 
+  /**
+   * 保存ConsumerToken到数据库
+   * @param consumer
+   * @param expires
+   * @return
+   */
   public ConsumerToken generateAndSaveConsumerToken(Consumer consumer, Date expires) {
     Preconditions.checkArgument(consumer != null, "Consumer can not be null");
 
@@ -98,6 +111,11 @@ public class ConsumerService {
     return consumerTokenRepository.save(consumerToken);
   }
 
+  /**
+   * 通过appid来查询ConsumerToken
+   * @param appId
+   * @return
+   */
   public ConsumerToken getConsumerTokenByAppId(String appId) {
     Consumer consumer = consumerRepository.findByAppId(appId);
     if (consumer == null) {
@@ -107,6 +125,11 @@ public class ConsumerService {
     return consumerTokenRepository.findByConsumerId(consumer.getId());
   }
 
+  /**
+   * 根据token来查询ConsumerId
+   * @param token
+   * @return
+   */
   public Long getConsumerIdByToken(String token) {
     if (Strings.isNullOrEmpty(token)) {
       return null;
@@ -124,6 +147,14 @@ public class ConsumerService {
     return assignNamespaceRoleToConsumer(token, appId, namespaceName, null);
   }
 
+  /**
+   * 给consumer分配NamespaceRole角色
+   * @param token
+   * @param appId
+   * @param namespaceName
+   * @param env
+   * @return
+   */
   @Transactional
   public List<ConsumerRole> assignNamespaceRoleToConsumer(String token, String appId, String namespaceName, String env) {
     Long consumerId = getConsumerIdByToken(token);
@@ -131,6 +162,7 @@ public class ConsumerService {
       throw new BadRequestException("Token is Illegal");
     }
 
+    //查询namespace的修改和发布角色
     Role namespaceModifyRole =
         rolePermissionService.findRoleByRoleName(RoleUtils.buildModifyNamespaceRoleName(appId, namespaceName, env));
     Role namespaceReleaseRole =
@@ -139,16 +171,17 @@ public class ConsumerService {
     if (namespaceModifyRole == null || namespaceReleaseRole == null) {
       throw new BadRequestException("Namespace's role does not exist. Please check whether namespace has created.");
     }
-
+    //拿到角色id
     long namespaceModifyRoleId = namespaceModifyRole.getId();
     long namespaceReleaseRoleId = namespaceReleaseRole.getId();
 
+    //根据consumerId和对应的角色id，看数据是否已经存在
     ConsumerRole managedModifyRole = consumerRoleRepository.findByConsumerIdAndRoleId(consumerId, namespaceModifyRoleId);
     ConsumerRole managedReleaseRole = consumerRoleRepository.findByConsumerIdAndRoleId(consumerId, namespaceReleaseRoleId);
-    if (managedModifyRole != null && managedReleaseRole != null) {
+    if (managedModifyRole != null && managedReleaseRole != null) {//都存在的话直接返回
       return Arrays.asList(managedModifyRole, managedReleaseRole);
     }
-
+    //不存在的话进行创建保存到数据库，然后返回
     String operator = userInfoHolder.getUser().getUserId();
 
     ConsumerRole namespaceModifyConsumerRole = createConsumerRole(consumerId, namespaceModifyRoleId, operator);
@@ -160,6 +193,13 @@ public class ConsumerService {
     return Arrays.asList(createdModifyConsumerRole, createdReleaseConsumerRole);
   }
 
+  /**
+   * 分配master角色给Consumer
+   * 同样先判断是否已经存在，不存在在进行创建
+   * @param token
+   * @param appId
+   * @return
+   */
   @Transactional
   public ConsumerRole assignAppRoleToConsumer(String token, String appId) {
     Long consumerId = getConsumerIdByToken(token);
@@ -183,6 +223,7 @@ public class ConsumerService {
     return consumerRoleRepository.save(consumerRole);
   }
 
+
   @Transactional
   public void createConsumerAudits(Iterable<ConsumerAudit> consumerAudits) {
     consumerAuditRepository.saveAll(consumerAudits);
@@ -195,6 +236,7 @@ public class ConsumerService {
     return consumerTokenRepository.save(entity);
   }
 
+  //生成一个ConsumerToken对象
   private ConsumerToken generateConsumerToken(Consumer consumer, Date expires) {
     long consumerId = consumer.getId();
     String createdBy = userInfoHolder.getUser().getUserId();
@@ -207,7 +249,7 @@ public class ConsumerService {
     consumerToken.setDataChangeCreatedTime(createdTime);
     consumerToken.setDataChangeLastModifiedBy(createdBy);
     consumerToken.setDataChangeLastModifiedTime(createdTime);
-
+    //设置token
     generateAndEnrichToken(consumer, consumerToken);
 
     return consumerToken;
@@ -220,16 +262,18 @@ public class ConsumerService {
     if (consumerToken.getDataChangeCreatedTime() == null) {
       consumerToken.setDataChangeCreatedTime(new Date());
     }
+    //生成token并设置
     consumerToken.setToken(generateToken(consumer.getAppId(), consumerToken
         .getDataChangeCreatedTime(), portalConfig.consumerTokenSalt()));
   }
-
+    //token的生成规则
   String generateToken(String consumerAppId, Date generationTime, String
       consumerTokenSalt) {
     return Hashing.sha1().hashString(KEY_JOINER.join(consumerAppId, TIMESTAMP_FORMAT.format
         (generationTime), consumerTokenSalt), Charsets.UTF_8).toString();
   }
 
+  //生成一个ConsumerRole对象
     ConsumerRole createConsumerRole(Long consumerId, Long roleId, String operator) {
     ConsumerRole consumerRole = new ConsumerRole();
 

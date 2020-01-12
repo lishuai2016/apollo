@@ -59,6 +59,11 @@ public class BeanUtils {
     return instance;
   }
 
+  /**
+   *  获得这个source对象中空值的属性列表，返回为一个数组
+   * @param source
+   * @return
+   */
   private static String[] getNullPropertyNames(Object source) {
     final BeanWrapper src = new BeanWrapperImpl(source);
     PropertyDescriptor[] pds = src.getPropertyDescriptors();

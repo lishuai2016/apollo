@@ -32,10 +32,19 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+/**
+ * 这里面封装了通过portal转发请求到admin server的所有接口方法【核心】
+ * 内部的实现类都实现了抽象类com.ctrip.framework.apollo.portal.api.API
+ *
+ * 相当于路由转发请求接口
+ */
 
 @Service
 public class AdminServiceAPI {
 
+  /**
+   * com.ctrip.framework.apollo.portal.controller.SystemInfoController#checkHealth(java.lang.String)
+   */
   @Service
   public static class HealthAPI extends API {
 
@@ -44,6 +53,9 @@ public class AdminServiceAPI {
     }
   }
 
+  /**
+   * 对应com.ctrip.framework.apollo.adminservice.controller.AppController
+   */
   @Service
   public static class AppAPI extends API {
 
@@ -65,6 +77,9 @@ public class AdminServiceAPI {
   }
 
 
+  /**
+   * com.ctrip.framework.apollo.adminservice.controller.AppNamespaceController
+   */
   @Service
   public static class NamespaceAPI extends API {
 
@@ -149,6 +164,9 @@ public class AdminServiceAPI {
     }
   }
 
+  /**
+   * com.ctrip.framework.apollo.adminservice.controller.ItemController
+   */
   @Service
   public static class ItemAPI extends API {
 
@@ -187,6 +205,10 @@ public class AdminServiceAPI {
     }
   }
 
+  /**
+   * com.ctrip.framework.apollo.adminservice.controller.ClusterController
+   */
+
   @Service
   public static class ClusterAPI extends API {
 
@@ -219,6 +241,10 @@ public class AdminServiceAPI {
     }
   }
 
+  /**
+   * com.ctrip.framework.apollo.adminservice.controller.ReleaseController
+   * 和发布服务相关的api接口
+   */
   @Service
   public static class ReleaseAPI extends API {
 
@@ -267,6 +293,19 @@ public class AdminServiceAPI {
       return releaseDTO;
     }
 
+    /**
+     * 通过http方式调用admin模块的接口
+     * com.ctrip.framework.apollo.adminservice.controller.ReleaseController#publish(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, boolean)
+     * @param appId
+     * @param env
+     * @param clusterName
+     * @param namespace
+     * @param releaseName
+     * @param releaseComment
+     * @param operator
+     * @param isEmergencyPublish
+     * @return
+     */
     public ReleaseDTO createRelease(String appId, Env env, String clusterName, String namespace,
         String releaseName, String releaseComment, String operator,
         boolean isEmergencyPublish) {
@@ -324,6 +363,9 @@ public class AdminServiceAPI {
     }
   }
 
+  /**
+   * com.ctrip.framework.apollo.adminservice.controller.CommitController
+   */
   @Service
   public static class CommitAPI extends API {
 
@@ -338,6 +380,9 @@ public class AdminServiceAPI {
     }
   }
 
+  /**
+   * com.ctrip.framework.apollo.adminservice.controller.NamespaceLockController
+   */
   @Service
   public static class NamespaceLockAPI extends API {
 
@@ -406,6 +451,9 @@ public class AdminServiceAPI {
     }
   }
 
+  /**
+   * com.ctrip.framework.apollo.adminservice.controller.NamespaceBranchController
+   */
   @Service
   public static class NamespaceBranchAPI extends API {
 
@@ -446,6 +494,9 @@ public class AdminServiceAPI {
     }
   }
 
+  /**
+   * com.ctrip.framework.apollo.adminservice.controller.ReleaseHistoryController
+   */
   @Service
   public static class ReleaseHistoryAPI extends API {
 

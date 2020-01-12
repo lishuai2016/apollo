@@ -7,9 +7,14 @@ import com.google.common.collect.Lists;
 
 public class ConfigPropertySourceFactory {
 
+  /**
+   * ConfigPropertySource 数组
+   */
   private final List<ConfigPropertySource> configPropertySources = Lists.newLinkedList();
 
+  // 创建 ConfigPropertySource 对象
   public ConfigPropertySource getConfigPropertySource(String name, Config source) {
+    // 创建 ConfigPropertySource 对象
     ConfigPropertySource configPropertySource = new ConfigPropertySource(name, source);
 
     configPropertySources.add(configPropertySource);

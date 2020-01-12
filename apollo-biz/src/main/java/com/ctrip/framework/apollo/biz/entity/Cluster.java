@@ -11,6 +11,8 @@ import javax.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+1、appId 字段，App 编号，指向对应的 App 。App : Cluster = 1 : N 。
+2、parentClusterId 字段，父 App 编号。用于灰度发布
  */
 @Entity
 @Table(name = "Cluster")

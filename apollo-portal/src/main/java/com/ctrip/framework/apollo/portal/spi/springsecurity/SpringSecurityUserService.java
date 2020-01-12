@@ -33,6 +33,7 @@ public class SpringSecurityUserService implements UserService {
   private PasswordEncoder encoder = new BCryptPasswordEncoder();
   private List<GrantedAuthority> authorities;
 
+  //在com.ctrip.framework.apollo.portal.spi.configuration.AuthConfiguration中配置
   @Autowired
   private JdbcUserDetailsManager userDetailsManager;
   @Autowired
@@ -47,7 +48,7 @@ public class SpringSecurityUserService implements UserService {
   @Transactional
   public void createOrUpdate(UserPO user) {
     String username = user.getUsername();
-
+    // 创建 Spring Security User
     User userDetails = new User(username, encoder.encode(user.getPassword()), authorities);
 
     if (userDetailsManager.userExists(username)) {
@@ -55,7 +56,7 @@ public class SpringSecurityUserService implements UserService {
     } else {
       userDetailsManager.createUser(userDetails);
     }
-
+    // 更新邮箱
     UserPO managedUser = userRepository.findByUsername(username);
     managedUser.setEmail(user.getEmail());
 

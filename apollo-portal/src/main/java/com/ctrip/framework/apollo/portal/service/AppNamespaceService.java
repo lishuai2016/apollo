@@ -73,9 +73,14 @@ public class AppNamespaceService {
     return appNamespaceRepository.findByAppId(appId);
   }
 
+  /**
+   * APP创建的时候调用
+   * @param appId
+   */
+
   @Transactional
   public void createDefaultAppNamespace(String appId) {
-    if (!isAppNamespaceNameUnique(appId, ConfigConsts.NAMESPACE_APPLICATION)) {
+    if (!isAppNamespaceNameUnique(appId, ConfigConsts.NAMESPACE_APPLICATION)) {//根据appid和application判断是否已经存在
       throw new BadRequestException(String.format("App already has application namespace. AppId = %s", appId));
     }
 
@@ -88,7 +93,7 @@ public class AppNamespaceService {
     appNs.setDataChangeCreatedBy(userId);
     appNs.setDataChangeLastModifiedBy(userId);
 
-    appNamespaceRepository.save(appNs);
+    appNamespaceRepository.save(appNs);//保存一个namespace到数据库
   }
 
   public boolean isAppNamespaceNameUnique(String appId, String namespaceName) {
@@ -105,12 +110,12 @@ public class AppNamespaceService {
   public AppNamespace createAppNamespaceInLocal(AppNamespace appNamespace, boolean appendNamespacePrefix) {
     String appId = appNamespace.getAppId();
 
-    //add app org id as prefix
+    //add app org id as prefix   检测对应的APP是否存在
     App app = appService.load(appId);
     if (app == null) {
       throw new BadRequestException("App not exist. AppId = " + appId);
     }
-
+    //是否拼接前缀和后缀
     StringBuilder appNamespaceName = new StringBuilder();
     //add prefix postfix
     appNamespaceName
@@ -123,6 +128,7 @@ public class AppNamespaceService {
       appNamespace.setComment("");
     }
 
+    //文件格式校验
     if (!ConfigFileFormat.isValidFormat(appNamespace.getFormat())) {
      throw new BadRequestException("Invalid namespace format. format must be properties、json、yaml、yml、xml");
     }
@@ -135,7 +141,7 @@ public class AppNamespaceService {
 
     appNamespace.setDataChangeLastModifiedBy(operator);
 
-    // globally uniqueness check for public app namespace
+    // globally uniqueness check for public app namespace  公共配置文件校验全局唯一性
     if (appNamespace.isPublic()) {
       checkAppNamespaceGlobalUniqueness(appNamespace);
     } else {
@@ -143,21 +149,27 @@ public class AppNamespaceService {
       if (appNamespaceRepository.findByAppIdAndName(appNamespace.getAppId(), appNamespace.getName()) != null) {
         throw new BadRequestException("Private AppNamespace " + appNamespace.getName() + " already exists!");
       }
-      // should not have the same with public app namespace
+      // should not have the same with public app namespace  保证没有和公用文件同名
       checkPublicAppNamespaceGlobalUniqueness(appNamespace);
     }
 
-    AppNamespace createdAppNamespace = appNamespaceRepository.save(appNamespace);
+    AppNamespace createdAppNamespace = appNamespaceRepository.save(appNamespace);//保存到数据库
 
+    //新增该namespace对应的角色，两对四个角色以及对应的权限
     roleInitializationService.initNamespaceRoles(appNamespace.getAppId(), appNamespace.getName(), operator);
     roleInitializationService.initNamespaceEnvRoles(appNamespace.getAppId(), appNamespace.getName(), operator);
 
     return createdAppNamespace;
   }
 
+  /**
+   * 公用的配置文件进行唯一性校验，并且要是存在私有同名的文件也是不可
+   * @param appNamespace
+   */
   private void checkAppNamespaceGlobalUniqueness(AppNamespace appNamespace) {
+    //全局唯一性校验，存在抛出异常
     checkPublicAppNamespaceGlobalUniqueness(appNamespace);
-
+    //查找相同名称的私有配置文件
     List<AppNamespace> privateAppNamespaces = findAllPrivateAppNamespaces(appNamespace.getName());
 
     if (!CollectionUtils.isEmpty(privateAppNamespaces)) {

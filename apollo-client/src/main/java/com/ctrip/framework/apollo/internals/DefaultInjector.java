@@ -18,7 +18,12 @@ import com.google.inject.Singleton;
 
 /**
  * Guice injector
+ *
+ * 依赖注入框架Google Guice
+ *
  * @author Jason Song(song_s@ctrip.com)
+ *
+ *
  */
 public class DefaultInjector implements Injector {
   private com.google.inject.Injector m_injector;
@@ -33,6 +38,12 @@ public class DefaultInjector implements Injector {
     }
   }
 
+  /**
+   * 通过类的名称或者接口获得实例
+   * @param clazz
+   * @param <T>
+   * @return
+   */
   @Override
   public <T> T getInstance(Class<T> clazz) {
     try {
@@ -50,6 +61,9 @@ public class DefaultInjector implements Injector {
     return null;
   }
 
+  /**
+   * 容器中的实例 使用 ApolloModule 类，告诉 Guice 需要 DI 的配置
+   */
   private static class ApolloModule extends AbstractModule {
     @Override
     protected void configure() {

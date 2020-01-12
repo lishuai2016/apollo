@@ -22,6 +22,10 @@ import javax.validation.Valid;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ 提供 App 的 API
+ */
+
 @RestController
 public class AppController {
 
@@ -33,22 +37,33 @@ public class AppController {
     this.adminService = adminService;
   }
 
+  /**
+   创建 App
+   * @param dto  数据传输模型
+   * @return
+   */
+
   @PostMapping("/apps")
   public AppDTO create(@Valid @RequestBody AppDTO dto) {
     App entity = BeanUtils.transform(App.class, dto);
-    App managedEntity = appService.findOne(entity.getAppId());
+    App managedEntity = appService.findOne(entity.getAppId());//按照appid俩查找APP
     if (managedEntity != null) {
       throw new BadRequestException("app already exist.");
     }
 
-    entity = adminService.createNewApp(entity);
+    entity = adminService.createNewApp(entity);//创建APP
 
     return BeanUtils.transform(AppDTO.class, entity);
   }
 
+  /**
+   * 删除APP   先查后删除
+   * @param appId
+   * @param operator
+   */
   @DeleteMapping("/apps/{appId:.+}")
   public void delete(@PathVariable("appId") String appId, @RequestParam String operator) {
-    App entity = appService.findOne(appId);
+    App entity = appService.findOne(appId);//通过appid找到这个数据库对象
     if (entity == null) {
       throw new NotFoundException("app not found for appId " + appId);
     }

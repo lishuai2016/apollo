@@ -19,7 +19,7 @@ import com.google.common.base.Strings;
  */
 public class ConfigUtil {
   private static final Logger logger = LoggerFactory.getLogger(ConfigUtil.class);
-  private int refreshInterval = 5;
+  private int refreshInterval = 5;//间隔五分钟去meta service拉去一次服务
   private TimeUnit refreshIntervalTimeUnit = TimeUnit.MINUTES;
   private int connectTimeout = 1000; //1 second
   private int readTimeout = 5000; //5 seconds
@@ -113,7 +113,7 @@ public class ConfigUtil {
   }
 
   public String getMetaServerDomainName() {
-    return MetaDomainConsts.getDomain(getApolloEnv());
+    return MetaDomainConsts.getDomain(getApolloEnv());//获得meta service的地址
   }
 
   private void initConnectTimeout() {
@@ -201,8 +201,9 @@ public class ConfigUtil {
     return onErrorRetryIntervalTimeUnit;
   }
 
+  //获得默认缓存配置目录
   public String getDefaultLocalCacheDir() {
-    String cacheRoot = getCustomizedCacheRoot();
+    String cacheRoot = getCustomizedCacheRoot();//获取自定义的缓存目录，没有自定义的话在使用系统默认的
 
     if (!Strings.isNullOrEmpty(cacheRoot)) {
       return cacheRoot + File.separator + getAppId();
@@ -231,6 +232,7 @@ public class ConfigUtil {
     return cacheRoot;
   }
 
+  //通过判断 Env 是否为 LOCAL
   public boolean isInLocalMode() {
     try {
       return Env.LOCAL == getApolloEnv();

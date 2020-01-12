@@ -24,6 +24,7 @@ import com.ctrip.framework.apollo.util.ConfigUtil;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 默认的配置工厂实例类
  */
 public class DefaultConfigFactory implements ConfigFactory {
   private static final Logger logger = LoggerFactory.getLogger(DefaultConfigFactory.class);
@@ -32,16 +33,16 @@ public class DefaultConfigFactory implements ConfigFactory {
   public DefaultConfigFactory() {
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
   }
-
+  //创建 Config 对象
   @Override
   public Config create(String namespace) {
-    ConfigFileFormat format = determineFileFormat(namespace);
+    ConfigFileFormat format = determineFileFormat(namespace);//匹配文件的格式
     if (ConfigFileFormat.isPropertiesCompatible(format)) {
       return new DefaultConfig(namespace, createPropertiesCompatibleFileConfigRepository(namespace, format));
     }
     return new DefaultConfig(namespace, createLocalConfigRepository(namespace));
   }
-
+//创建 FileConfig 对象
   @Override
   public ConfigFile createConfigFile(String namespace, ConfigFileFormat configFileFormat) {
     ConfigRepository configRepository = createLocalConfigRepository(namespace);
@@ -63,13 +64,20 @@ public class DefaultConfigFactory implements ConfigFactory {
     return null;
   }
 
+  /**
+   根据是否为本地模式，单独使用 LocalFileConfigRepository 还是组合使用 LocalFileConfigRepository + RemoteConfigRepository
+   * @param namespace
+   * @return
+   */
   LocalFileConfigRepository createLocalConfigRepository(String namespace) {
+    // 本地模式，使用 LocalFileConfigRepository 对象
     if (m_configUtil.isInLocalMode()) {
       logger.warn(
           "==== Apollo is in local mode! Won't pull configs from remote server for namespace {} ! ====",
           namespace);
       return new LocalFileConfigRepository(namespace);
     }
+    // 非本地模式，使用 LocalFileConfigRepository + RemoteConfigRepository 对象
     return new LocalFileConfigRepository(namespace, createRemoteConfigRepository(namespace));
   }
 

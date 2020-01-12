@@ -16,6 +16,9 @@ import javax.servlet.http.HttpServletResponse;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * 实现 Filter 接口，OpenAPI 认证( Authentication )过滤器
+ *
  */
 public class ConsumerAuthenticationFilter implements Filter {
   private ConsumerAuthUtil consumerAuthUtil;
@@ -36,17 +39,18 @@ public class ConsumerAuthenticationFilter implements Filter {
       IOException, ServletException {
     HttpServletRequest request = (HttpServletRequest) req;
     HttpServletResponse response = (HttpServletResponse) resp;
-
+// 从请求 Header 中，获得 token
     String token = request.getHeader("Authorization");
-
+    // 获得 Consumer 编号  通过token获得编号
     Long consumerId = consumerAuthUtil.getConsumerId(token);
-
+// 若不存在，返回错误状态码 401
     if (consumerId == null) {
       response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
       return;
     }
-
+// 存储 Consumer 编号到请求中
     consumerAuthUtil.storeConsumerId(request, consumerId);
+    // 记录 ConsumerAudit 记录
     consumerAuditUtil.audit(request, consumerId);
 
     chain.doFilter(req, resp);

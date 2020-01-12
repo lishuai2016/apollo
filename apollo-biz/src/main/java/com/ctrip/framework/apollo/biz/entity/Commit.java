@@ -10,6 +10,17 @@ import javax.persistence.Entity;
 import javax.persistence.Lob;
 import javax.persistence.Table;
 
+/**
+ *
+ *
+ Commit 实体，记录 Item 的 KV 变更历史
+
+ 1、appId + clusterName + namespaceName 字段，可以确认唯一 Namespace 记录。
+
+ 2、changeSets 字段，Item 变更集合。JSON 格式化字符串，使用 ConfigChangeContentBuilder 构建。
+ */
+
+
 @Entity
 @Table(name = "Commit")
 @SQLDelete(sql = "Update Commit set isDeleted = 1 where id = ?")
@@ -32,6 +43,7 @@ public class Commit extends BaseEntity {
   @Column(name = "Comment")
   private String comment;
 
+  //使用json格式记录变更的item
   public String getChangeSets() {
     return changeSets;
   }

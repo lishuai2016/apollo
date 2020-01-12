@@ -9,6 +9,7 @@ import com.google.common.base.Function;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 枚举了所有解析字符串成对应数据类型的 Function
  */
 public interface Functions {
   Function<String, Integer> TO_INT_FUNCTION = new Function<String, Integer>() {

@@ -54,11 +54,17 @@ import java.util.Collections;
 import java.util.EventListener;
 import java.util.Map;
 
+/**
+ * 这里根据配置文件选择走不同的登录认证方式
+ */
 @Configuration
 public class AuthConfiguration {
 
   /**
    * spring.profiles.active = ctrip
+   * 方式1：携程内部的实现
+   *
+   * 第一种， profile=ctrip ，携程内部实现，接入了SSO并实现用户搜索、查询接口。
    */
   @Configuration
   @Profile("ctrip")
@@ -200,6 +206,19 @@ public class AuthConfiguration {
 
   /**
    * spring.profiles.active = auth
+   * 方式2：SpringSecurity简单认证
+   *
+   * 第二种，profile=auth ，使用 Apollo 提供的 Spring Security 简单认证。
+   *
+   *
+   1、@EnableWebSecurity 注解，禁用 Boot 的默认 Security 配置，配合 @Configuration 启用自定义配置
+   （需要继承 WebSecurityConfigurerAdapter ）。
+
+   2、@EnableGlobalMethodSecurity(prePostEnabled = true) 注解，启用 Security 注解，例如最常用的 @PreAuthorize
+
+   3、统一的 URL 的权限校验，只判断是否为登陆用户，在 SpringSecurityConfigureration 中，我们可以看到。
+
+   4、具体每个 URL 的权限校验，通过在对应的方法上，添加 @PreAuthorize 方法注解，配合具体的方法参数，一起校验功能 + 数据级的权限校验。
    */
   @Configuration
   @Profile("auth")
@@ -223,12 +242,24 @@ public class AuthConfiguration {
       return new DefaultLogoutHandler();
     }
 
+    /**
+     * SpringSecurity
+     * 下面注意是对ApolloPortalDB 数据的users表和Authorities进行操作
+     *
+     * 设置SQL来覆盖默认的SQL来时间接入自己的数据表
+     *
+     * @param auth
+     * @param datasource
+     * @return
+     * @throws Exception
+     */
     @Bean
     public JdbcUserDetailsManager jdbcUserDetailsManager(AuthenticationManagerBuilder auth,
         DataSource datasource) throws Exception {
-      JdbcUserDetailsManager jdbcUserDetailsManager = auth.jdbcAuthentication()
-          .passwordEncoder(new BCryptPasswordEncoder()).dataSource(datasource)
-          .usersByUsernameQuery("select Username,Password,Enabled from `Users` where Username = ?")
+      JdbcUserDetailsManager jdbcUserDetailsManager = auth.jdbcAuthentication()  //基于jdbc
+          .passwordEncoder(new BCryptPasswordEncoder()) //加密方式
+              .dataSource(datasource) //设置数据源
+          .usersByUsernameQuery("select Username,Password,Enabled from `Users` where Username = ?")//通过用户名查找用户以及权限信息
           .authoritiesByUsernameQuery(
               "select Username,Authority from `Authorities` where Username = ?")
           .getUserDetailsService();
@@ -268,23 +299,24 @@ public class AuthConfiguration {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-      http.csrf().disable();
-      http.headers().frameOptions().sameOrigin();
+      http.csrf().disable();// 关闭打开的 csrf 保护
+      http.headers().frameOptions().sameOrigin();// 仅允许相同 origin 访问
       http.authorizeRequests()
-          .antMatchers("/openapi/**", "/vendor/**", "/styles/**", "/scripts/**", "/views/**", "/img/**").permitAll()
-          .antMatchers("/**").hasAnyRole(USER_ROLE);
-      http.formLogin().loginPage("/signin").permitAll().failureUrl("/signin?#/error").and().httpBasic();
+          .antMatchers("/openapi/**", "/vendor/**", "/styles/**", "/scripts/**", "/views/**", "/img/**").permitAll()// openapi 和 资源不校验权限
+          .antMatchers("/**").hasAnyRole(USER_ROLE);// 其他，需要登录 User
+      http.formLogin().loginPage("/signin").permitAll().failureUrl("/signin?#/error").and().httpBasic();// 登录页
       SimpleUrlLogoutSuccessHandler urlLogoutHandler = new SimpleUrlLogoutSuccessHandler();
       urlLogoutHandler.setDefaultTargetUrl("/signin?#/logout");
       http.logout().logoutUrl("/user/logout").invalidateHttpSession(true).clearAuthentication(true)
-          .logoutSuccessHandler(urlLogoutHandler);
-      http.exceptionHandling().authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/signin"));
+          .logoutSuccessHandler(urlLogoutHandler);// 登出（退出）
+      http.exceptionHandling().authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/signin")); // 未身份校验，跳转到登录页
     }
 
   }
 
   /**
    * spring.profiles.active = ldap
+   * 方式3：ldap
    */
   @Configuration
   @Profile("ldap")
@@ -421,10 +453,11 @@ public class AuthConfiguration {
   }
 
   /**
-   * default profile
+   * default profile   默认实现，全局只有一个apollo账户
+   * 方式4：profile 为空，使用默认实现，全局只有 apollo 一个账号。
    */
   @Configuration
-  @ConditionalOnMissingProfile({"ctrip", "auth", "ldap"})
+  @ConditionalOnMissingProfile({"ctrip", "auth", "ldap"}) //应该是缺失前三个，激活这个的意思
   static class DefaultAuthAutoConfiguration {
 
     @Bean
@@ -452,7 +485,7 @@ public class AuthConfiguration {
     }
   }
 
-  @ConditionalOnMissingProfile({"auth", "ldap"})
+  @ConditionalOnMissingProfile({"auth", "ldap"})//被方式1和4公用，其他的两个都是两个一组配合使用
   @Configuration
   @EnableWebSecurity
   @EnableGlobalMethodSecurity(prePostEnabled = true)

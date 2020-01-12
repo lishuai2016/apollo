@@ -28,6 +28,11 @@ public class ServerConfigController {
     this.userInfoHolder = userInfoHolder;
   }
 
+  /**
+   * 新增或者修改一条配置项
+   * @param serverConfig
+   * @return
+   */
   @PreAuthorize(value = "@permissionValidator.isSuperAdmin()")
   @PostMapping("/server/config")
   public ServerConfig createOrUpdate(@Valid @RequestBody ServerConfig serverConfig) {
@@ -48,7 +53,7 @@ public class ServerConfigController {
   }
 
   @PreAuthorize(value = "@permissionValidator.isSuperAdmin()")
-  @GetMapping("/server/config/{key:.+}")
+  @GetMapping("/server/config/{key:.+}")// 这个:.+表达的含义？？？
   public ServerConfig loadServerConfig(@PathVariable String key) {
     return serverConfigRepository.findByKey(key);
   }

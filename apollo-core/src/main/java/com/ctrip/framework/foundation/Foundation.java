@@ -9,6 +9,11 @@ import com.ctrip.framework.foundation.spi.provider.ServerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 抽象类，全部为静态方法和属性，可以直接引用并使用
+ * 在别的类中第一次引用的时候进行加载
+ */
+
 public abstract class Foundation {
   private static final Logger logger = LoggerFactory.getLogger(Foundation.class);
   private static Object lock = new Object();

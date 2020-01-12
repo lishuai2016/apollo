@@ -9,6 +9,19 @@ import com.ctrip.framework.apollo.portal.spi.UserInfoHolder;
 import com.ctrip.framework.apollo.portal.util.RoleUtils;
 import org.springframework.stereotype.Component;
 
+/**
+ * 权限校验器
+ *
+ * 1、Namespace 级别
+ * 2、APP级别
+ *
+ * 在每个需要校验权限的方法上，添加 @PreAuthorize 注解，并在 value 属性上写 EL 表达式，调用 PermissionValidator 的校验方法。例如：
+
+ 创建 Namespace 的方法，添加了 @PreAuthorize(value = "@permissionValidator.hasCreateNamespacePermission(#appId)") 。
+ 删除 Namespace 的方法，添加了 @PreAuthorize(value = "@permissionValidator.hasDeleteNamespacePermission(#appId)") 。
+ 通过这样的方式，达到功能 + 数据级的权限控制。
+
+ */
 @Component("permissionValidator")
 public class PermissionValidator {
 

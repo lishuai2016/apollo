@@ -14,8 +14,10 @@ import com.ctrip.framework.apollo.util.ExceptionUtil;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 因为 Properties 是 KV 数据结构，需要将多条 KV 拼接成一个字符串，进行缓存到 m_contentCache 中
  */
 public class PropertiesConfigFile extends AbstractConfigFile {
+  //配置字符串缓存
   protected AtomicReference<String> m_contentCache;
 
   public PropertiesConfigFile(String namespace,
@@ -26,15 +28,19 @@ public class PropertiesConfigFile extends AbstractConfigFile {
 
   @Override
   protected void update(Properties newProperties) {
+    // 设置【新】Properties
     m_configProperties.set(newProperties);
+    // 清空缓存
     m_contentCache.set(null);
   }
 
   @Override
   public String getContent() {
+    // 更新到缓存
     if (m_contentCache.get() == null) {
       m_contentCache.set(doGetContent());
     }
+    // 从缓存中，获得配置字符串
     return m_contentCache.get();
   }
 
@@ -44,7 +50,7 @@ public class PropertiesConfigFile extends AbstractConfigFile {
     }
 
     try {
-      return PropertiesUtil.toString(m_configProperties.get());
+      return PropertiesUtil.toString(m_configProperties.get());//// 拼接 KV 属性，成字符串
     } catch (Throwable ex) {
       ApolloConfigException exception =
           new ApolloConfigException(String

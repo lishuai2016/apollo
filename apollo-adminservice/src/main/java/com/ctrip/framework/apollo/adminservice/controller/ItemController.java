@@ -23,6 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * 对namespace的item操作都需要这个NamespaceLock锁
+ */
+
 @RestController
 public class ItemController {
 
@@ -36,6 +40,14 @@ public class ItemController {
     this.commitService = commitService;
   }
 
+  /**
+   * 后端创建一个配置项
+   * @param appId
+   * @param clusterName
+   * @param namespaceName
+   * @param dto
+   * @return
+   */
   @PreAcquireNamespaceLock
   @PostMapping("/apps/{appId}/clusters/{clusterName}/namespaces/{namespaceName}/items")
   public ItemDTO create(@PathVariable("appId") String appId,
@@ -44,11 +56,12 @@ public class ItemController {
     Item entity = BeanUtils.transform(Item.class, dto);
 
     ConfigChangeContentBuilder builder = new ConfigChangeContentBuilder();
+    //查找配置文件中是不是已经存在这个key，存在的话报错
     Item managedEntity = itemService.findOne(appId, clusterName, namespaceName, entity.getKey());
     if (managedEntity != null) {
       throw new BadRequestException("item already exists");
     } else {
-      entity = itemService.save(entity);
+      entity = itemService.save(entity);//不存在把这个数据项保存到数据库
       builder.createItem(entity);
     }
     dto = BeanUtils.transform(ItemDTO.class, entity);
@@ -60,7 +73,7 @@ public class ItemController {
     commit.setChangeSets(builder.build());
     commit.setDataChangeCreatedBy(dto.getDataChangeLastModifiedBy());
     commit.setDataChangeLastModifiedBy(dto.getDataChangeLastModifiedBy());
-    commitService.save(commit);
+    commitService.save(commit);//记录数据项的变更记录到数据库
 
     return dto;
   }

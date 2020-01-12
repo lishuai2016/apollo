@@ -6,6 +6,7 @@ import com.ctrip.framework.apollo.enums.PropertyChangeType;
 /**
  * Holds the information for a config change.
  * @author Jason Song(song_s@ctrip.com)
+ * 配置变化封装的对象：配置每个属性变化的信息
  */
 public class ConfigChange {
   private final String namespace;

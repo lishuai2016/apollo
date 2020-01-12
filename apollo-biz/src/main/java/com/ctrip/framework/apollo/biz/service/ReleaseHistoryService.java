@@ -54,6 +54,7 @@ public class ReleaseHistoryService {
   public ReleaseHistory createReleaseHistory(String appId, String clusterName, String
       namespaceName, String branchName, long releaseId, long previousReleaseId, int operation,
                                              Map<String, Object> operationContext, String operator) {
+    // 创建 ReleaseHistory 对象
     ReleaseHistory releaseHistory = new ReleaseHistory();
     releaseHistory.setAppId(appId);
     releaseHistory.setClusterName(clusterName);
@@ -70,9 +71,9 @@ public class ReleaseHistoryService {
     releaseHistory.setDataChangeCreatedTime(new Date());
     releaseHistory.setDataChangeCreatedBy(operator);
     releaseHistory.setDataChangeLastModifiedBy(operator);
-
+// 保存 ReleaseHistory 对象
     releaseHistoryRepository.save(releaseHistory);
-
+// 记录 Audit 到数据库中
     auditService.audit(ReleaseHistory.class.getSimpleName(), releaseHistory.getId(),
                        Audit.OP.INSERT, releaseHistory.getDataChangeCreatedBy());
 

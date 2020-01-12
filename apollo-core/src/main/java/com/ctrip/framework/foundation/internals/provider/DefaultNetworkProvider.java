@@ -4,6 +4,10 @@ import com.ctrip.framework.foundation.internals.NetworkInterfaceManager;
 import com.ctrip.framework.foundation.spi.provider.NetworkProvider;
 import com.ctrip.framework.foundation.spi.provider.Provider;
 
+/**
+ * 网络提供者的默认实现
+ */
+
 public class DefaultNetworkProvider implements NetworkProvider {
   @Override
   public String getProperty(String name, String defaultValue) {

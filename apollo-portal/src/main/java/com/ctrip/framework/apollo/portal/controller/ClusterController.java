@@ -18,6 +18,10 @@ import java.util.Objects;
 
 import static com.ctrip.framework.apollo.common.utils.RequestPrecondition.checkModel;
 
+/**
+ 在创建 Cluster的界面中，点击【提交】按钮，调用创建 Cluster 的 API 。
+ */
+
 @RestController
 public class ClusterController {
 
@@ -29,6 +33,13 @@ public class ClusterController {
     this.userInfoHolder = userInfoHolder;
   }
 
+  /**
+   * 创建集群
+   * @param appId
+   * @param env
+   * @param cluster
+   * @return
+   */
   @PreAuthorize(value = "@permissionValidator.hasCreateClusterPermission(#appId)")
   @PostMapping(value = "apps/{appId}/envs/{env}/clusters")
   public ClusterDTO createCluster(@PathVariable String appId, @PathVariable String env,

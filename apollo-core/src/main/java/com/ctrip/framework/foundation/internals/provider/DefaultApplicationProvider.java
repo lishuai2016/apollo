@@ -20,9 +20,13 @@ public class DefaultApplicationProvider implements ApplicationProvider {
 
   private String m_appId;
 
+  /**
+   * 这个初始化方法的意义是为带输入流参数的初始化方法提供数据量对象
+   */
   @Override
   public void initialize() {
     try {
+      //Thread.currentThread().getContextClassLoader()获得打包的classes目录
       InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(APP_PROPERTIES_CLASSPATH);
       if (in == null) {
         in = DefaultApplicationProvider.class.getResourceAsStream(APP_PROPERTIES_CLASSPATH);
@@ -45,7 +49,7 @@ public class DefaultApplicationProvider implements ApplicationProvider {
         }
       }
 
-      initAppId();
+      initAppId();//初始化appid
     } catch (Throwable ex) {
       logger.error("Initialize DefaultApplicationProvider failed.", ex);
     }
@@ -78,7 +82,10 @@ public class DefaultApplicationProvider implements ApplicationProvider {
   }
 
   private void initAppId() {
-    // 1. Get app.id from System Property
+    // 1. Get app.id from System Property  下面的三种情况设置的变量，通过这种方式即可读取到；
+    // 1.1、启动参数  -Dapp.id=YOUR-APP-ID
+    // 1.2、Spring Boot application.properties
+    // 1.3、System.setProperty("app.id", "YOUR-APP-ID");
     m_appId = System.getProperty("app.id");
     if (!Utils.isBlank(m_appId)) {
       m_appId = m_appId.trim();
@@ -86,7 +93,7 @@ public class DefaultApplicationProvider implements ApplicationProvider {
       return;
     }
 
-    //2. Try to get app id from OS environment variable
+    //2. Try to get app id from OS environment variable   系统的环境变量
     m_appId = System.getenv("APP_ID");
     if (!Utils.isBlank(m_appId)) {
       m_appId = m_appId.trim();
@@ -94,7 +101,7 @@ public class DefaultApplicationProvider implements ApplicationProvider {
       return;
     }
 
-    // 3. Try to get app id from app.properties.
+    // 3. Try to get app id from app.properties.    确保classpath:/META-INF/app.properties文件存在，并且其中内容形如：app.id=YOUR-APP-ID
     m_appId = m_appProperties.getProperty("app.id");
     if (!Utils.isBlank(m_appId)) {
       m_appId = m_appId.trim();

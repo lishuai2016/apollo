@@ -4,6 +4,9 @@ import org.springframework.core.env.MapPropertySource;
 
 import java.util.Map;
 
+/**
+ * refresh() 抽象方法，刷新配置。
+ */
 public abstract class RefreshablePropertySource extends MapPropertySource {
 
 

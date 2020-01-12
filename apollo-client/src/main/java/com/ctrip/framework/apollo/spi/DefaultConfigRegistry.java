@@ -14,6 +14,11 @@ public class DefaultConfigRegistry implements ConfigRegistry {
   private static final Logger s_logger = LoggerFactory.getLogger(DefaultConfigRegistry.class);
   private Map<String, ConfigFactory> m_instances = Maps.newConcurrentMap();
 
+  /**
+   * 这里注册一个配置工厂
+   * @param namespace the namespace
+   * @param factory   the factory for this namespace
+   */
   @Override
   public void register(String namespace, ConfigFactory factory) {
     if (m_instances.containsKey(namespace)) {
@@ -23,6 +28,11 @@ public class DefaultConfigRegistry implements ConfigRegistry {
     m_instances.put(namespace, factory);
   }
 
+  /**
+   * 根据namespace获得一个注册的配置工厂ConfigFactory
+   * @param namespace the namespace
+   * @return
+   */
   @Override
   public ConfigFactory getFactory(String namespace) {
     ConfigFactory config = m_instances.get(namespace);

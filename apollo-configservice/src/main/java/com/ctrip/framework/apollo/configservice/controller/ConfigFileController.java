@@ -45,6 +45,11 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *我们看到通知变化接口NotificationControllerV2，仅返回通知相关的信息，而不包括配置相关的信息。
+ * 所以 Config Service 需要提供配置读取的接口，相当于在NotificationControllerV2中通知客户端他们各自关心的配置文件有更新，
+ * 然后请求到这里获得具体的配置信息
+ *
+ * 仅提供 configs/{appId}/{clusterName}/{namespace:.+} 接口，提供配置读取的功能。
  */
 @RestController
 @RequestMapping("/configfiles")
@@ -105,6 +110,7 @@ public class ConfigFileController implements ReleaseMessageListener {
     this.grayReleaseRulesHolder = grayReleaseRulesHolder;
   }
 
+  //配置文件的格式PROPERTIES
   @GetMapping(value = "/{appId}/{clusterName}/{namespace:.+}")
   public ResponseEntity<String> queryConfigAsProperties(@PathVariable String appId,
                                                         @PathVariable String clusterName,
@@ -125,7 +131,7 @@ public class ConfigFileController implements ReleaseMessageListener {
 
     return new ResponseEntity<>(result, propertiesResponseHeaders, HttpStatus.OK);
   }
-
+  //配置文件的格式json
   @GetMapping(value = "/json/{appId}/{clusterName}/{namespace:.+}")
   public ResponseEntity<String> queryConfigAsJson(@PathVariable String appId,
                                                   @PathVariable String clusterName,
@@ -150,33 +156,34 @@ public class ConfigFileController implements ReleaseMessageListener {
                      String namespace, String dataCenter, String clientIp,
                      HttpServletRequest request,
                      HttpServletResponse response) throws IOException {
-    //strip out .properties suffix
+    //strip out .properties suffix 去除后缀
     namespace = namespaceUtil.filterNamespaceName(namespace);
+    // 获得归一化的 Namespace 名字。因为，客户端 Namespace 会填写错大小写。
     //fix the character case issue, such as FX.apollo <-> fx.apollo
     namespace = namespaceUtil.normalizeNamespace(appId, namespace);
 
-    if (Strings.isNullOrEmpty(clientIp)) {
+    if (Strings.isNullOrEmpty(clientIp)) {// 若 clientIp 未提交，从 Request 中获取。
       clientIp = tryToGetClientIp(request);
     }
 
-    //1. check whether this client has gray release rules
+    //1. check whether this client has gray release rules   是否有灰度发布
     boolean hasGrayReleaseRule = grayReleaseRulesHolder.hasGrayReleaseRule(appId, clientIp,
         namespace);
 
     String cacheKey = assembleCacheKey(outputFormat, appId, clusterName, namespace, dataCenter);
 
-    //2. try to load gray release and return
+    //2. try to load gray release and return   如果是灰度发布走这里返回
     if (hasGrayReleaseRule) {
       Tracer.logEvent("ConfigFile.Cache.GrayRelease", cacheKey);
       return loadConfig(outputFormat, appId, clusterName, namespace, dataCenter, clientIp,
           request, response);
     }
 
-    //3. if not gray release, check weather cache exists, if exists, return
+    //3. if not gray release, check weather cache exists, if exists, return  不是灰度发布看这里是不是有缓存
     String result = localCache.getIfPresent(cacheKey);
 
     //4. if not exists, load from ConfigController
-    if (Strings.isNullOrEmpty(result)) {
+    if (Strings.isNullOrEmpty(result)) {//缓存为空从ConfigController获得数据
       Tracer.logEvent("ConfigFile.Cache.Miss", cacheKey);
       result = loadConfig(outputFormat, appId, clusterName, namespace, dataCenter, clientIp,
           request, response);
@@ -211,6 +218,19 @@ public class ConfigFileController implements ReleaseMessageListener {
     return result;
   }
 
+  /**
+   * 主要的处理方法，这里跳转到configController进行处理
+   * @param outputFormat
+   * @param appId
+   * @param clusterName
+   * @param namespace
+   * @param dataCenter
+   * @param clientIp
+   * @param request
+   * @param response
+   * @return
+   * @throws IOException
+   */
   private String loadConfig(ConfigFileOutputFormat outputFormat, String appId, String clusterName,
                             String namespace, String dataCenter, String clientIp,
                             HttpServletRequest request,

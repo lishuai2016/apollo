@@ -37,7 +37,10 @@ public class UserInfoController {
     this.userService = userService;
   }
 
-
+  /**
+   * 只有开启springsecurity的才可以创建用户
+   * @param user
+   */
   @PreAuthorize(value = "@permissionValidator.isSuperAdmin()")
   @PostMapping("/users")
   public void createOrUpdateUser(@RequestBody UserPO user) {
@@ -70,6 +73,11 @@ public class UserInfoController {
     return userService.searchUsers(keyword, offset, limit);
   }
 
+  /**
+   * 默认的用户登录
+   * @param userId
+   * @return
+   */
   @GetMapping("/users/{userId}")
   public UserInfo getUserByUserId(@PathVariable String userId) {
     return userService.findByUserId(userId);

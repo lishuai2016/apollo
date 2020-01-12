@@ -5,6 +5,10 @@ import java.util.List;
 
 /**
  * storage cud result
+ Item 的批量变更。
+
+ 1、对于 yaml yml json xml 数据类型的 Namespace ，仅有一条 Item 记录，所以批量修改实际是修改该条 Item 。
+ 2、对于 properties 数据类型的 Namespace ，有多条 Item 记录，所以批量变更是多条 Item
  */
 public class ItemChangeSets extends BaseDTO{
 

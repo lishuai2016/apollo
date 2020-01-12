@@ -21,6 +21,10 @@ import org.springframework.util.CollectionUtils;
 
 /**
  * Create by zhangzheng on 2018/3/6
+ * Apollo 为了实现自动更新机制，做了很多处理，重点在于找到 XML 和注解配置的 PlaceHolder，
+ 全部以 StringValue 的形式，注册到 SpringValueRegistry 中，从而让 AutoUpdateConfigChangeListener
+ 监听到 Apollo 配置变更后，能够从 SpringValueRegistry 中找到发生属性值变更的属性对应的 StringValue ，进行修改
+ *
  */
 public class AutoUpdateConfigChangeListener implements ConfigChangeListener{
   private static final Logger logger = LoggerFactory.getLogger(AutoUpdateConfigChangeListener.class);
@@ -45,7 +49,7 @@ public class AutoUpdateConfigChangeListener implements ConfigChangeListener{
 
   @Override
   public void onChange(ConfigChangeEvent changeEvent) {
-    Set<String> keys = changeEvent.changedKeys();
+    Set<String> keys = changeEvent.changedKeys();//拿到变化的属性集合
     if (CollectionUtils.isEmpty(keys)) {
       return;
     }
@@ -66,7 +70,7 @@ public class AutoUpdateConfigChangeListener implements ConfigChangeListener{
   private void updateSpringValue(SpringValue springValue) {
     try {
       Object value = resolvePropertyValue(springValue);
-      springValue.update(value);
+      springValue.update(value);//更新内存中的属性值
 
       logger.info("Auto update apollo changed value successfully, new value: {}, {}", value,
           springValue);

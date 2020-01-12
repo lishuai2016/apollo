@@ -6,6 +6,7 @@ import com.ctrip.framework.apollo.core.enums.ConfigFileFormat;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 提供获得 Config 和 ConfigFile 对象的接口
  */
 public interface ConfigManager {
   /**

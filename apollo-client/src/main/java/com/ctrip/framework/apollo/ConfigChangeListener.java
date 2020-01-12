@@ -4,6 +4,7 @@ import com.ctrip.framework.apollo.model.ConfigChangeEvent;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 配置变化的监听器
  */
 public interface ConfigChangeListener {
   /**

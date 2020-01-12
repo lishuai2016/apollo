@@ -12,6 +12,9 @@ import org.springframework.core.MethodParameter;
  *
  * @author github.com/zhegexiaohuozi  seimimaster@gmail.com
  * @since 2018/2/6.
+ *
+ * 应该是属性值在内存中的封装？？？
+ *
  */
 public class SpringValue {
 

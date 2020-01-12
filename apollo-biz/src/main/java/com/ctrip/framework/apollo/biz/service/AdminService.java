@@ -12,6 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * 封装了创建APP以及删除APP调用多个服务的操作
+ */
+
 @Service
 public class AdminService {
   private final static Logger logger = LoggerFactory.getLogger(AdminService.class);
@@ -35,15 +39,15 @@ public class AdminService {
   @Transactional
   public App createNewApp(App app) {
     String createBy = app.getDataChangeCreatedBy();
-    App createdApp = appService.save(app);
+    App createdApp = appService.save(app);//保存到数据库
 
     String appId = createdApp.getAppId();
-
-    appNamespaceService.createDefaultAppNamespace(appId, createBy);
-
-    clusterService.createDefaultCluster(appId, createBy);
-
-    namespaceService.instanceOfAppNamespaces(appId, ConfigConsts.CLUSTER_NAME_DEFAULT, createBy);
+// 创建 App 的默认命名空间 "application"
+    appNamespaceService.createDefaultAppNamespace(appId, createBy);//创建默认的appnamespace，保存到数据库
+    // 创建 App 的默认集群 "default"
+    clusterService.createDefaultCluster(appId, createBy);//创建默认的集群
+// 创建 Cluster 的默认命名空间
+    namespaceService.instanceOfAppNamespaces(appId, ConfigConsts.CLUSTER_NAME_DEFAULT, createBy);//创建默认的namespace保存到数据库
 
     return app;
   }
@@ -54,7 +58,7 @@ public class AdminService {
 
     logger.info("{} is deleting App:{}", operator, appId);
 
-    List<Cluster> managedClusters = clusterService.findClusters(appId);
+    List<Cluster> managedClusters = clusterService.findClusters(appId);//找到这个appid下的集群
 
     // 1. delete clusters
     if (Objects.nonNull(managedClusters)) {
@@ -63,7 +67,7 @@ public class AdminService {
       }
     }
 
-    // 2. delete appNamespace
+    // 2. delete appNamespace 通过appid找到关联的配置文件，然后删除
     appNamespaceService.batchDelete(appId, operator);
 
     // 3. delete app

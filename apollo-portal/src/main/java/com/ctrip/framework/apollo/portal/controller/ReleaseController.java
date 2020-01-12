@@ -33,6 +33,18 @@ import java.util.Objects;
 
 import static com.ctrip.framework.apollo.common.utils.RequestPrecondition.checkModel;
 
+/**
+
+ 在配置中心中，一个重要的功能就是配置发布后实时推送到客户端。下面我们简要看一下这块是怎么设计实现的。
+
+ 1、用户在 Portal 操作配置发布
+ 2、Portal 调用 Admin Service 的接口操作发布【通过http的方式】
+ 3、Admin Service 发布配置后，发送 ReleaseMessage 给各个Config Service【插入数据库 Release、ReleaseHistory、ReleaseMessage】
+ 4、Config Service 收到 ReleaseMessage 后，通知对应的客户端
+
+ */
+
+
 @Validated
 @RestController
 public class ReleaseController {
@@ -53,22 +65,37 @@ public class ReleaseController {
     this.permissionValidator = permissionValidator;
   }
 
+  /**
+   * 点击发布按钮触发的接口
+   *
+   *
+   * @param appId
+   * @param env
+   * @param clusterName
+   * @param namespaceName
+   * @param model
+   * @return
+   */
   @PreAuthorize(value = "@permissionValidator.hasReleaseNamespacePermission(#appId, #namespaceName, #env)")
   @PostMapping(value = "/apps/{appId}/envs/{env}/clusters/{clusterName}/namespaces/{namespaceName}/releases")
   public ReleaseDTO createRelease(@PathVariable String appId,
                                   @PathVariable String env, @PathVariable String clusterName,
                                   @PathVariable String namespaceName, @RequestBody NamespaceReleaseModel model) {
+    // 设置 PathVariable 变量到 NamespaceReleaseModel 中
     model.setAppId(appId);
     model.setEnv(env);
     model.setClusterName(clusterName);
     model.setNamespaceName(namespaceName);
 
+    // 若是紧急发布，但是当前环境未允许该操作，抛出 BadRequestException 异常
     if (model.isEmergencyPublish() && !portalConfig.isEmergencyPublishAllowed(Env.valueOf(env))) {
       throw new BadRequestException(String.format("Env: %s is not supported emergency publish now", env));
     }
 
+    // 发布配置【重点】 通过http方式调用admin模块的接口
     ReleaseDTO createdRelease = releaseService.publish(model);
 
+    // 创建 ConfigPublishEvent 对象
     ConfigPublishEvent event = ConfigPublishEvent.instance();
     event.withAppId(appId)
         .withCluster(clusterName)
@@ -77,6 +104,7 @@ public class ReleaseController {
         .setNormalPublishEvent(true)
         .setEnv(Env.valueOf(env));
 
+    // 发布 ConfigPublishEvent 事件【重点】
     publisher.publishEvent(event);
 
     return createdRelease;

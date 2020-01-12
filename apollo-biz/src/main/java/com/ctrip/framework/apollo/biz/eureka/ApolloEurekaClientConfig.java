@@ -9,6 +9,12 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 
+/**
+ * 声明 Eureka 的配置
+ * 把服务注册到注册中心
+ */
+
+
 @Component
 @Primary
 public class ApolloEurekaClientConfig extends EurekaClientConfigBean {

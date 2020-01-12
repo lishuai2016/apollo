@@ -154,7 +154,7 @@ public class InstanceService {
 
   @Transactional
   public InstanceConfig createInstanceConfig(InstanceConfig instanceConfig) {
-    instanceConfig.setId(0); //protection
+    instanceConfig.setId(0); //protection新建的id为0？？？
 
     return instanceConfigRepository.save(instanceConfig);
   }

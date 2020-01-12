@@ -5,6 +5,7 @@ import java.util.Properties;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 纯文本 ConfigFile 抽象类，例如 xml yaml 等等
  */
 public abstract class PlainTextConfigFile extends AbstractConfigFile {
 

@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/ApolloPortalDB?characterEncoding=utf8
+    username: root
+    password: 123456
+
+
+ctrip:
+  appid: 100003173
+  email:
+    send:
+      code: 37030033
+    template:
+      id: 37030033
+    survival:
+      duration: 5

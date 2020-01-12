@@ -17,6 +17,10 @@ import java.util.Objects;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * 基于 PortalDB 的 ServerConfig 的 PropertySource 实现类
+ *
+ * 总数据库查询数据更新到内存中
  */
 @Component
 public class PortalDBPropertySource extends RefreshablePropertySource {

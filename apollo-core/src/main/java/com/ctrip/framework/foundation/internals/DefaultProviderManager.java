@@ -33,10 +33,17 @@ public class DefaultProviderManager implements ProviderManager {
     register(serverProvider);
   }
 
+  //保存到本地的map中去
   public synchronized void register(Provider provider) {
     m_providers.put(provider.getType(), provider);
   }
 
+  /**
+   * 根据类型获得对应的实现对象实例Provider
+   * @param clazz
+   * @param <T>
+   * @return
+   */
   @Override
   @SuppressWarnings("unchecked")
   public <T extends Provider> T provider(Class<T> clazz) {
@@ -51,6 +58,12 @@ public class DefaultProviderManager implements ProviderManager {
     }
   }
 
+  /**
+   * 遍历所有的Provider来查找属性对应的值
+   * @param name
+   * @param defaultValue
+   * @return
+   */
   @Override
   public String getProperty(String name, String defaultValue) {
     for (Provider provider : m_providers.values()) {

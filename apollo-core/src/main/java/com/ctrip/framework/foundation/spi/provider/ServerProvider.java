@@ -5,6 +5,7 @@ import java.io.InputStream;
 
 /**
  * Provider for server related properties
+ * 提供当前运行服务相关的信息
  */
 public interface ServerProvider extends Provider {
   /**

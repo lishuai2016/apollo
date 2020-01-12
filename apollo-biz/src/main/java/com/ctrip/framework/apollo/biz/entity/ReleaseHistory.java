@@ -11,6 +11,16 @@ import javax.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * appId + clusterName + namespaceName 字段，指向对应的 Namespace 记录
+ * branchName 字段，Branch 名字。
+    主干，使用 Cluster 名字。
+    分支，使用子 Cluster 名字。
+
+releaseId 字段，Release 编号。
+previousReleaseId 字段，上一次 Release 编号。
+operation 类型，操作类型
+ *
  */
 @Entity
 @Table(name = "ReleaseHistory")

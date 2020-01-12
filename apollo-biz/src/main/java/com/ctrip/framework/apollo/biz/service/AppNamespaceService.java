@@ -103,18 +103,23 @@ public class AppNamespaceService {
                        createBy);
   }
 
+  /**
+   *
+   * @param appNamespace
+   * @return
+   */
   @Transactional
   public AppNamespace createAppNamespace(AppNamespace appNamespace) {
     String createBy = appNamespace.getDataChangeCreatedBy();
-    if (!isAppNamespaceNameUnique(appNamespace.getAppId(), appNamespace.getName())) {
+    if (!isAppNamespaceNameUnique(appNamespace.getAppId(), appNamespace.getName())) {//唯一性校验
       throw new ServiceException("appnamespace not unique");
     }
     appNamespace.setId(0);//protection
     appNamespace.setDataChangeCreatedBy(createBy);
     appNamespace.setDataChangeLastModifiedBy(createBy);
 
-    appNamespace = appNamespaceRepository.save(appNamespace);
-
+    appNamespace = appNamespaceRepository.save(appNamespace);//保存到数据库
+    // 创建 AppNamespace 在 App 下，每个 Cluster 的 Namespace 对象。
     createNamespaceForAppNamespaceInAllCluster(appNamespace.getAppId(), appNamespace.getName(), createBy);
 
     auditService.audit(AppNamespace.class.getSimpleName(), appNamespace.getId(), Audit.OP.INSERT, createBy);
@@ -133,12 +138,13 @@ public class AppNamespaceService {
   }
 
   public void createNamespaceForAppNamespaceInAllCluster(String appId, String namespaceName, String createBy) {
+    //找这个appid的父集群
     List<Cluster> clusters = clusterService.findParentClusters(appId);
 
     for (Cluster cluster : clusters) {
 
       // in case there is some dirty data, e.g. public namespace deleted in other app and now created in this app
-      if (!namespaceService.isNamespaceUnique(appId, cluster.getName(), namespaceName)) {
+      if (!namespaceService.isNamespaceUnique(appId, cluster.getName(), namespaceName)) {//唯一性校验
         continue;
       }
 
@@ -149,7 +155,7 @@ public class AppNamespaceService {
       namespace.setDataChangeCreatedBy(createBy);
       namespace.setDataChangeLastModifiedBy(createBy);
 
-      namespaceService.save(namespace);
+      namespaceService.save(namespace);//保存到数据库
     }
   }
 

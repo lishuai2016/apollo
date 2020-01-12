@@ -4,6 +4,7 @@ import com.ctrip.framework.apollo.core.enums.Env;
 
 /**
  * @since 1.0.0
+ * 获取meta server地址的接口
  */
 public interface MetaServerProvider extends Ordered {
 

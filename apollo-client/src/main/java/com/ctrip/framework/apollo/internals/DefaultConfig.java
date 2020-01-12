@@ -30,11 +30,11 @@ import com.google.common.util.concurrent.RateLimiter;
  */
 public class DefaultConfig extends AbstractConfig implements RepositoryChangeListener {
   private static final Logger logger = LoggerFactory.getLogger(DefaultConfig.class);
-  private final String m_namespace;
-  private final Properties m_resourceProperties;
-  private final AtomicReference<Properties> m_configProperties;
-  private final ConfigRepository m_configRepository;
-  private final RateLimiter m_warnLogRateLimiter;
+  private final String m_namespace;//Namespace 的名字
+  private final Properties m_resourceProperties;//项目下，Namespace 对应的配置文件的 Properties
+  private final AtomicReference<Properties> m_configProperties;//配置 Properties 的缓存引用
+  private final ConfigRepository m_configRepository;//配置 Repository
+  private final RateLimiter m_warnLogRateLimiter;//答应告警限流器。当读取不到属性值，会打印告警日志。通过该限流器，避免打印过多日志。
 
   private volatile ConfigSourceType m_sourceType = ConfigSourceType.NONE;
 
@@ -43,14 +43,21 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
    *
    * @param namespace        the namespace of this config instance
    * @param configRepository the config repository for this config instance
+   *
+   * DefaultConfig 会从 ConfigRepository 中，加载配置 Properties ，并更新到 m_configProperties 中
+   *
+  为什么 DefaultConfig 实现 RepositoryChangeListener 接口？ConfigRepository 的一个实现类 RemoteConfigRepository ，
+  会从远程 Config Service 加载配置。但是 Config Service 的配置不是一成不变，可以在 Portal 进行修改。
+  所以 RemoteConfigRepository 会在配置变更时，从 Admin Service 重新加载配置。为了实现 Config 监听配置的变更，
+  所以需要将 DefaultConfig 注册为 ConfigRepository 的监听器。因此，DefaultConfig 需要实现 RepositoryChangeListener 接口
    */
   public DefaultConfig(String namespace, ConfigRepository configRepository) {
     m_namespace = namespace;
-    m_resourceProperties = loadFromResource(m_namespace);
+    m_resourceProperties = loadFromResource(m_namespace);//加载本地的配置文件
     m_configRepository = configRepository;
     m_configProperties = new AtomicReference<>();
-    m_warnLogRateLimiter = RateLimiter.create(0.017); // 1 warning log output per minute
-    initialize();
+    m_warnLogRateLimiter = RateLimiter.create(0.017); // 1 warning log output per minute 每个一分钟输出一个报警
+    initialize();//初始化
   }
 
   private void initialize() {
@@ -63,22 +70,29 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
     } finally {
       //register the change listener no matter config repository is working or not
       //so that whenever config repository is recovered, config could get changed
-      m_configRepository.addChangeListener(this);
+      m_configRepository.addChangeListener(this);//注册配置变化的监听器
     }
   }
 
+  /**
+   * 获得属性值
+   *
+   * @param key          the property name
+   * @param defaultValue the default value when key is not found or any error occurred
+   * @return
+   */
   @Override
   public String getProperty(String key, String defaultValue) {
-    // step 1: check system properties, i.e. -Dkey=value
+    // step 1: check system properties, i.e. -Dkey=value  从系统 Properties 获得属性，例如，JVM 启动参数
     String value = System.getProperty(key);
 
-    // step 2: check local cached properties file
+    // step 2: check local cached properties file  从缓存 Properties 获得属性
     if (value == null && m_configProperties.get() != null) {
       value = m_configProperties.get().getProperty(key);
     }
 
     /**
-     * step 3: check env variable, i.e. PATH=...
+     * step 3: check env variable, i.e. PATH=...   从环境变量中获得参数
      * normally system environment variables are in UPPERCASE, however there might be exceptions.
      * so the caller should provide the key in the right case
      */
@@ -86,18 +100,19 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
       value = System.getenv(key);
     }
 
-    // step 4: check properties file from classpath
+    // step 4: check properties file from classpath  从项目下的配置文件中获取
     if (value == null && m_resourceProperties != null) {
       value = (String) m_resourceProperties.get(key);
     }
-
+    // 打印告警日志
     if (value == null && m_configProperties.get() == null && m_warnLogRateLimiter.tryAcquire()) {
       logger.warn("Could not load config for namespace {} from Apollo, please check whether the configs are released in Apollo! Return default value now!", m_namespace);
     }
-
+// 若为空，使用默认值
     return value == null ? defaultValue : value;
   }
 
+  //获得属性名集合
   @Override
   public Set<String> getPropertyNames() {
     Properties properties = m_configProperties.get();
@@ -113,6 +128,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
     return m_sourceType;
   }
 
+  //提取出properties文件的key集合
   private Set<String> stringPropertyNames(Properties properties) {
     //jdk9以下版本Properties#enumerateStringProperties方法存在性能问题，keys() + get(k) 重复迭代, jdk9之后改为entrySet遍历.
     Map<String, String> h = new HashMap<>();
@@ -126,63 +142,91 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
     return h.keySet();
   }
 
+  /**
+   * 监听器接口
+   * 当 ConfigRepository 读取到配置发生变更时，计算配置变更集合，并通知监听器们。
+   * @param namespace the namespace of this repository change
+   * @param newProperties the properties after change
+   */
   @Override
   public synchronized void onRepositoryChange(String namespace, Properties newProperties) {
     if (newProperties.equals(m_configProperties.get())) {
       return;
     }
-
+// 读取新的 Properties 对象
     ConfigSourceType sourceType = m_configRepository.getSourceType();
     Properties newConfigProperties = new Properties();
     newConfigProperties.putAll(newProperties);
-
+// 计算配置变更集合
     Map<String, ConfigChange> actualChanges = updateAndCalcConfigChanges(newConfigProperties, sourceType);
 
     //check double checked result
     if (actualChanges.isEmpty()) {
       return;
     }
-
+    //触发配置的监听器
     this.fireConfigChange(new ConfigChangeEvent(m_namespace, actualChanges));
 
     Tracer.logEvent("Apollo.Client.ConfigChanges", m_namespace);
   }
 
+  /**
+   * 设置配置的引用以及配置的类型
+   * @param newConfigProperties
+   * @param sourceType
+   */
   private void updateConfig(Properties newConfigProperties, ConfigSourceType sourceType) {
     m_configProperties.set(newConfigProperties);
     m_sourceType = sourceType;
   }
 
+  /**
+   计算配置变更集合
+   因为 DefaultConfig 有多个属性源，所以需要在 AbstractConfig#updateAndCalcConfigChanges(...) 方法的基础上，进一步计算
+   * @param newConfigProperties
+   * @param sourceType
+   * @return
+   */
   private Map<String, ConfigChange> updateAndCalcConfigChanges(Properties newConfigProperties,
       ConfigSourceType sourceType) {
+    // 计算配置变更集合
     List<ConfigChange> configChanges =
         calcPropertyChanges(m_namespace, m_configProperties.get(), newConfigProperties);
 
+    // 结果存放
     ImmutableMap.Builder<String, ConfigChange> actualChanges =
         new ImmutableMap.Builder<>();
 
     /** === Double check since DefaultConfig has multiple config sources ==== **/
 
     //1. use getProperty to update configChanges's old value
+    // 重新设置每个 ConfigChange 的【旧】值
     for (ConfigChange change : configChanges) {
       change.setOldValue(this.getProperty(change.getPropertyName(), change.getOldValue()));
     }
 
     //2. update m_configProperties
+    // 更新到 `m_configProperties` 中
     updateConfig(newConfigProperties, sourceType);
+    // 清空 Cache 缓存
     clearConfigCache();
 
     //3. use getProperty to update configChange's new value and calc the final changes
     for (ConfigChange change : configChanges) {
+      // 重新设置每个 ConfigChange 的【新】值
       change.setNewValue(this.getProperty(change.getPropertyName(), change.getNewValue()));
+      // 重新计算变化类型
       switch (change.getChangeType()) {
         case ADDED:
+          // 相等，忽略
           if (Objects.equals(change.getOldValue(), change.getNewValue())) {
             break;
           }
+          // 老值非空，修改为变更类型
           if (change.getOldValue() != null) {
             change.setChangeType(PropertyChangeType.MODIFIED);
           }
+          // 添加过结果
           actualChanges.put(change.getPropertyName(), change);
           break;
         case MODIFIED:
@@ -207,8 +251,16 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
     return actualChanges.build();
   }
 
+  /**
+   * 项目下，Namespace 对应的配置文件的 Properties
+   * 读取属性的优先级上，m_configProperties > m_resourceProperties
+   * @param namespace
+   * @return
+   */
   private Properties loadFromResource(String namespace) {
+    // 生成文件名
     String name = String.format("META-INF/config/%s.properties", namespace);
+    // 读取 Properties 文件
     InputStream in = ClassLoaderUtil.getLoader().getResourceAsStream(name);
     Properties properties = null;
 

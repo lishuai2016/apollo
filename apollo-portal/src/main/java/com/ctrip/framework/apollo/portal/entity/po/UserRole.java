@@ -11,6 +11,9 @@ import javax.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ *
+ * 添加一个应用的时候好像这个表只是关联了前三个角色
+ *
  */
 @Entity
 @Table(name = "UserRole")

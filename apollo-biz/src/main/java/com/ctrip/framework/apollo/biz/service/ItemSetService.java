@@ -41,6 +41,7 @@ public class ItemSetService {
     String operator = changeSet.getDataChangeLastModifiedBy();
     ConfigChangeContentBuilder configChangeContentBuilder = new ConfigChangeContentBuilder();
 
+    //新增的数据项
     if (!CollectionUtils.isEmpty(changeSet.getCreateItems())) {
       for (ItemDTO item : changeSet.getCreateItems()) {
         Item entity = BeanUtils.transform(Item.class, item);
@@ -51,7 +52,7 @@ public class ItemSetService {
       }
       auditService.audit("ItemSet", null, Audit.OP.INSERT, operator);
     }
-
+    //需要更新的数据项
     if (!CollectionUtils.isEmpty(changeSet.getUpdateItems())) {
       for (ItemDTO item : changeSet.getUpdateItems()) {
         Item entity = BeanUtils.transform(Item.class, item);
@@ -74,7 +75,7 @@ public class ItemSetService {
       }
       auditService.audit("ItemSet", null, Audit.OP.UPDATE, operator);
     }
-
+    //需要删除的数据项
     if (!CollectionUtils.isEmpty(changeSet.getDeleteItems())) {
       for (ItemDTO item : changeSet.getDeleteItems()) {
         Item deletedItem = itemService.delete(item.getId(), operator);
@@ -83,7 +84,7 @@ public class ItemSetService {
       auditService.audit("ItemSet", null, Audit.OP.DELETE, operator);
     }
 
-    if (configChangeContentBuilder.hasContent()){
+    if (configChangeContentBuilder.hasContent()){//判断是否有变化，有的话记录一次提交记录
       createCommit(appId, clusterName, namespaceName, configChangeContentBuilder.build(),
                    changeSet.getDataChangeLastModifiedBy());
     }
@@ -91,7 +92,7 @@ public class ItemSetService {
     return changeSet;
 
   }
-
+  //记录一次item变更记录
   private void createCommit(String appId, String clusterName, String namespaceName, String configChangeContent,
                             String operator) {
 

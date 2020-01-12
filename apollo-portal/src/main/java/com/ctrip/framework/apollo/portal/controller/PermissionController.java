@@ -92,7 +92,7 @@ public class PermissionController {
   @GetMapping("/permissions/root")
   public ResponseEntity<PermissionCondition> hasRootPermission() {
     PermissionCondition permissionCondition = new PermissionCondition();
-
+    //如何关联这个serverconfig表的数据，来判断超级管理员的？？？
     permissionCondition.setHasPermission(rolePermissionService.isSuperAdmin(userInfoHolder.getUser().getUserId()));
 
     return ResponseEntity.ok().body(permissionCondition);

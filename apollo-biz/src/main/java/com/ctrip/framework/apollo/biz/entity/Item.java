@@ -10,6 +10,21 @@ import javax.persistence.Entity;
 import javax.persistence.Lob;
 import javax.persistence.Table;
 
+/**
+tem ，配置项，是 Namespace 下最小颗粒度的单位。在 Namespace 分成五种类型：properties yml yaml json xml 。其中：
+
+ properties ：每一行配置对应一条 Item 记录。
+ 后四者：无法进行拆分，所以一个 Namespace 仅仅对应一条 Item 记录
+
+ namespaceId 字段，Namespace 编号，指向对应的 Namespace 记录。
+
+ key 字段，键。
+    对于 properties ，使用 Item 的 key ，对应每条配置项的键。
+    对于 yaml 等等，使用 Item 的 key = content ，对应整个配置文件。
+
+ lineNum 字段，行号，从一开始。主要用于 properties 类型的配置文件。
+ */
+
 @Entity
 @Table(name = "Item")
 @SQLDelete(sql = "Update Item set isDeleted = 1 where id = ?")

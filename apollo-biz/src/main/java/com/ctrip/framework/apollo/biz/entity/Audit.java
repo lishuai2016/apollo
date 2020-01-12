@@ -9,6 +9,12 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 
+/**
+ entityName + entityId 字段，确实一个实体对象。
+ opName 字段，操作名。分成 INSERT、UPDATE、DELETE 三种，在 OP 中枚举。
+ comment 字段，备注。
+ */
+
 @Entity
 @Table(name = "Audit")
 @SQLDelete(sql = "Update Audit set isDeleted = 1 where id = ?")

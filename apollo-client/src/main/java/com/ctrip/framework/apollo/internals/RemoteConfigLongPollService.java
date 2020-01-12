@@ -46,6 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 提供http长轮询服务
  */
 public class RemoteConfigLongPollService {
   private static final Logger logger = LoggerFactory.getLogger(RemoteConfigLongPollService.class);
@@ -91,20 +92,28 @@ public class RemoteConfigLongPollService {
     m_longPollRateLimiter = RateLimiter.create(m_configUtil.getLongPollQPS());
   }
 
+  /**
+   * 提交的http长轮询任务
+   * @param namespace
+   * @param remoteConfigRepository
+   * @return
+   */
   public boolean submit(String namespace, RemoteConfigRepository remoteConfigRepository) {
+    //保存到本地的map中   每个配置文件对应一个长轮询对象
     boolean added = m_longPollNamespaces.put(namespace, remoteConfigRepository);
     m_notifications.putIfAbsent(namespace, INIT_NOTIFICATION_ID);
     if (!m_longPollStarted.get()) {
-      startLongPolling();
+      startLongPolling();//开始长轮询
     }
     return added;
   }
 
   private void startLongPolling() {
-    if (!m_longPollStarted.compareAndSet(false, true)) {
+    if (!m_longPollStarted.compareAndSet(false, true)) {//cas保证保存并发操作的安全性，失败了直接返回
       //already started
       return;
     }
+
     try {
       final String appId = m_configUtil.getAppId();
       final String cluster = m_configUtil.getCluster();
@@ -121,7 +130,7 @@ public class RemoteConfigLongPollService {
               //ignore
             }
           }
-          doLongPollingRefresh(appId, cluster, dataCenter);
+          doLongPollingRefresh(appId, cluster, dataCenter);//长轮询开始查询任务
         }
       });
     } catch (Throwable ex) {
@@ -137,6 +146,12 @@ public class RemoteConfigLongPollService {
     this.m_longPollingStopped.compareAndSet(false, true);
   }
 
+  /**
+   * http长轮询config server
+   * @param appId
+   * @param cluster
+   * @param dataCenter
+   */
   private void doLongPollingRefresh(String appId, String cluster, String dataCenter) {
     final Random random = new Random();
     ServiceDTO lastServiceDto = null;
@@ -152,13 +167,14 @@ public class RemoteConfigLongPollService {
       String url = null;
       try {
         if (lastServiceDto == null) {
-          List<ServiceDTO> configServices = getConfigServices();
-          lastServiceDto = configServices.get(random.nextInt(configServices.size()));
+          List<ServiceDTO> configServices = getConfigServices();//获得config service 服务地址列表
+          lastServiceDto = configServices.get(random.nextInt(configServices.size()));//随机选择一个
         }
 
         url =
             assembleLongPollRefreshUrl(lastServiceDto.getHomepageUrl(), appId, cluster, dataCenter,
                 m_notifications);
+//Long polling from http://10.181.163.3:80/notifications/v2?cluster=default&appId=test_yml&ip=10.12.128.64&notifications=%5B%7B%22namespaceName%22%3A%22application%22%2C%22notificationId%22%3A-1%7D%5D
 
         logger.debug("Long polling from {}", url);
         HttpRequest request = new HttpRequest(url);
@@ -170,8 +186,8 @@ public class RemoteConfigLongPollService {
             m_httpUtil.doGet(request, m_responseType);
 
         logger.debug("Long polling response: {}, url: {}", response.getStatusCode(), url);
-        if (response.getStatusCode() == 200 && response.getBody() != null) {
-          updateNotifications(response.getBody());
+        if (response.getStatusCode() == 200 && response.getBody() != null) { //请求成功
+          updateNotifications(response.getBody());//更新本地缓存
           updateRemoteNotifications(response.getBody());
           transaction.addData("Result", response.getBody().toString());
           notify(lastServiceDto, response.getBody());
@@ -228,6 +244,10 @@ public class RemoteConfigLongPollService {
     }
   }
 
+  /**
+   * 根据从config获得结果更新本地缓存
+   * @param deltaNotifications
+   */
   private void updateNotifications(List<ApolloConfigNotification> deltaNotifications) {
     for (ApolloConfigNotification notification : deltaNotifications) {
       if (Strings.isNullOrEmpty(notification.getNamespaceName())) {
@@ -235,7 +255,7 @@ public class RemoteConfigLongPollService {
       }
       String namespaceName = notification.getNamespaceName();
       if (m_notifications.containsKey(namespaceName)) {
-        m_notifications.put(namespaceName, notification.getNotificationId());
+        m_notifications.put(namespaceName, notification.getNotificationId());//本地缓存，发布编号
       }
       //since .properties are filtered out by default, so we need to check if there is notification with .properties suffix
       String namespaceNameWithPropertiesSuffix =
@@ -246,6 +266,10 @@ public class RemoteConfigLongPollService {
     }
   }
 
+  /**
+   *
+   * @param deltaNotifications
+   */
   private void updateRemoteNotifications(List<ApolloConfigNotification> deltaNotifications) {
     for (ApolloConfigNotification notification : deltaNotifications) {
       if (Strings.isNullOrEmpty(notification.getNamespaceName())) {

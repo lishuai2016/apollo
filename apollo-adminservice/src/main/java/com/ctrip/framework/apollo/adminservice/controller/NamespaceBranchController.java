@@ -23,6 +23,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 灰度发布也是分支发布，两者等价
+ */
+
 @RestController
 public class NamespaceBranchController {
 
@@ -46,7 +50,7 @@ public class NamespaceBranchController {
                                    @PathVariable String namespaceName,
                                    @RequestParam("operator") String operator) {
 
-    checkNamespace(appId, clusterName, namespaceName);
+    checkNamespace(appId, clusterName, namespaceName);//检测父cluster是否存在，不存在的话抛出异常
 
     Namespace createdBranch = namespaceBranchService.createBranch(appId, clusterName, namespaceName, operator);
 
@@ -76,20 +80,31 @@ public class NamespaceBranchController {
     return ruleDTO;
   }
 
+  /**
+   * 灰度发布规则
+   * @param appId
+   * @param clusterName
+   * @param namespaceName
+   * @param branchName
+   * @param newRuleDto
+   */
   @Transactional
   @PutMapping("/apps/{appId}/clusters/{clusterName}/namespaces/{namespaceName}/branches/{branchName}/rules")
   public void updateBranchGrayRules(@PathVariable String appId, @PathVariable String clusterName,
                                     @PathVariable String namespaceName, @PathVariable String branchName,
                                     @RequestBody GrayReleaseRuleDTO newRuleDto) {
 
+    //校验父子namespace是否存在
     checkBranch(appId, clusterName, namespaceName, branchName);
-
+// 将 GrayReleaseRuleDTO 转成 GrayReleaseRule 对象
     GrayReleaseRule newRules = BeanUtils.transform(GrayReleaseRule.class, newRuleDto);
+    // JSON 化规则为字符串，并设置到 GrayReleaseRule 对象中
     newRules.setRules(GrayReleaseRuleItemTransformer.batchTransformToJSON(newRuleDto.getRuleItems()));
+    // 设置 GrayReleaseRule 对象的 `branchStatus` 为 ACTIVE
     newRules.setBranchStatus(NamespaceBranchStatus.ACTIVE);
-
+// 更新子 Namespace 的灰度发布规则
     namespaceBranchService.updateBranchGrayRules(appId, clusterName, namespaceName, branchName, newRules);
-
+    // 发送 Release 消息  发送 Release 消息，从而通知客户端更新配置
     messageSender.sendMessage(ReleaseMessageKeyGenerator.generate(appId, clusterName, namespaceName),
                               Topics.APOLLO_RELEASE_TOPIC);
   }

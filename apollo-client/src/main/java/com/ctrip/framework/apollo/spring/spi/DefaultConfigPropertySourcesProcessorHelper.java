@@ -12,6 +12,12 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 
+/**
+ Apollo 为了实现自动更新机制，做了很多处理，重点在于找到 XML 和注解配置的 PlaceHolder，
+ 全部以 StringValue 的形式，注册到 SpringValueRegistry 中，从而让 AutoUpdateConfigChangeListener
+ 监听到 Apollo 配置变更后，能够从 SpringValueRegistry 中找到发生属性值变更的属性对应的 StringValue ，进行修改
+ */
+
 public class DefaultConfigPropertySourcesProcessorHelper implements ConfigPropertySourcesProcessorHelper {
 
   @Override
@@ -19,16 +25,21 @@ public class DefaultConfigPropertySourcesProcessorHelper implements ConfigProper
     Map<String, Object> propertySourcesPlaceholderPropertyValues = new HashMap<>();
     // to make sure the default PropertySourcesPlaceholderConfigurer's priority is higher than PropertyPlaceholderConfigurer
     propertySourcesPlaceholderPropertyValues.put("order", 0);
-
+/// 注册 PropertySourcesPlaceholderConfigurer 到 BeanDefinitionRegistry 中，替换 PlaceHolder 为对应的属性值，
+// 参考文章 https://leokongwq.github.io/2016/12/28/spring-PropertyPlaceholderConfigurer.html
     BeanRegistrationUtil.registerBeanDefinitionIfNotExists(registry, PropertySourcesPlaceholderConfigurer.class.getName(),
         PropertySourcesPlaceholderConfigurer.class, propertySourcesPlaceholderPropertyValues);
+    // 注册 ApolloAnnotationProcessor 到 BeanDefinitionRegistry 中，因为 XML 配置的 Bean 对象，
+    // 也可能存在 @ApolloConfig 和 @ApolloConfigChangeListener 注解。
     BeanRegistrationUtil.registerBeanDefinitionIfNotExists(registry, ApolloAnnotationProcessor.class.getName(),
         ApolloAnnotationProcessor.class);
+    // 注册 SpringValueProcessor 到 BeanDefinitionRegistry 中，用于 PlaceHolder 自动更新机制
     BeanRegistrationUtil.registerBeanDefinitionIfNotExists(registry, SpringValueProcessor.class.getName(),
         SpringValueProcessor.class);
+    // 注册 ApolloJsonValueProcessor 到 BeanDefinitionRegistry 中，因为 XML 配置的 Bean 对象，也可能存在 @ApolloJsonValue 注解。
     BeanRegistrationUtil.registerBeanDefinitionIfNotExists(registry, ApolloJsonValueProcessor.class.getName(),
         ApolloJsonValueProcessor.class);
-
+// 处理 XML 配置的 Spring PlaceHolder
     processSpringValueDefinition(registry);
   }
 
@@ -38,8 +49,9 @@ public class DefaultConfigPropertySourcesProcessorHelper implements ConfigProper
    * postProcessBeanDefinitionRegistry method of SpringValueDefinitionProcessor here...
    */
   private void processSpringValueDefinition(BeanDefinitionRegistry registry) {
+    // 创建 SpringValueDefinitionProcessor 对象
     SpringValueDefinitionProcessor springValueDefinitionProcessor = new SpringValueDefinitionProcessor();
-
+// 处理 XML 配置的 Spring PlaceHolder
     springValueDefinitionProcessor.postProcessBeanDefinitionRegistry(registry);
   }
 

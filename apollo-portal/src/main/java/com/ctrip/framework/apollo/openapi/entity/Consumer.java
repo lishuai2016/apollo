@@ -9,6 +9,10 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 
+/**
+ * 代表第三方应用
+ */
+
 @Entity
 @Table(name = "Consumer")
 @SQLDelete(sql = "Update Consumer set isDeleted = 1 where id = ?")
@@ -16,18 +20,18 @@ import javax.persistence.Table;
 public class Consumer extends BaseEntity {
 
   @Column(name = "Name", nullable = false)
-  private String name;
+  private String name;//应用的名称
 
   @Column(name = "AppId", nullable = false)
-  private String appId;
+  private String appId;//应用编号,和 {@link com.ctrip.framework.apollo.common.entity.App} 不是一个东西
 
-  @Column(name = "OrgId", nullable = false)
+  @Column(name = "OrgId", nullable = false)//部门编号
   private String orgId;
 
-  @Column(name = "OrgName", nullable = false)
+  @Column(name = "OrgName", nullable = false)//部门名
   private String orgName;
 
-  @Column(name = "OwnerName", nullable = false)
+  @Column(name = "OwnerName", nullable = false)//负责人
   private String ownerName;
 
   @Column(name = "OwnerEmail", nullable = false)
